@@ -228,7 +228,7 @@ function post_forwarding_settings_page() {
                 <div style="background: #f9f9f9; padding: 15px; margin-bottom: 15px; border-left: 4px solid #0073aa;">
                     <p><strong><?php esc_html_e('How it works:', 'post-forwarder'); ?></strong></p>
                     <ul>
-                        <li><strong><?php esc_html_e('Portal Key:', 'post-forwarder'); ?></strong> <?php esc_html_e('A unique identifier (like "sociaalweb") - this is what you\'ll select when forwarding posts', 'post-forwarder'); ?></li>
+                        <li><strong><?php esc_html_e('Portal Key:', 'post-forwarder'); ?></strong> <?php esc_html_e('A unique identifier (like "portal1") - this is what you\'ll select when forwarding posts', 'post-forwarder'); ?></li>
                         <li><strong><?php esc_html_e('Portal Name:', 'post-forwarder'); ?></strong> <?php esc_html_e('A friendly display name that appears in the interface', 'post-forwarder'); ?></li>
                         <li><strong><?php esc_html_e('URL:', 'post-forwarder'); ?></strong> <?php esc_html_e('The destination WordPress site URL', 'post-forwarder'); ?></li>
                         <li><strong><?php esc_html_e('User ID & App Password:', 'post-forwarder'); ?></strong> <?php esc_html_e('WordPress user ID and application password for API access', 'post-forwarder'); ?></li>
@@ -241,11 +241,11 @@ function post_forwarding_settings_page() {
                         <table class="form-table">
                             <tr>
                                 <th><?php esc_html_e('Portal Key', 'post-forwarder'); ?></th>
-                                <td><input type="text" name="portals[0][key]" placeholder="<?php esc_attr_e('e.g., sociaalweb', 'post-forwarder'); ?>" style="width: 200px;" /></td>
+                                <td><input type="text" name="portals[0][key]" placeholder="<?php esc_attr_e('e.g., portal1', 'post-forwarder'); ?>" style="width: 200px;" /></td>
                             </tr>
                             <tr>
                                 <th><?php esc_html_e('Portal Name', 'post-forwarder'); ?></th>
-                                <td><input type="text" name="portals[0][name]" placeholder="<?php esc_attr_e('e.g., Sociaalweb Portal', 'post-forwarder'); ?>" style="width: 300px;" /></td>
+                                <td><input type="text" name="portals[0][name]" placeholder="<?php esc_attr_e('e.g., Example Portal', 'post-forwarder'); ?>" style="width: 300px;" /></td>
                             </tr>
                             <tr>
                                 <th><?php esc_html_e('URL', 'post-forwarder'); ?></th>
@@ -331,8 +331,8 @@ function post_forwarding_settings_page() {
             var newPortal = '<div class="portal-row" style="border: 1px solid #ddd; padding: 15px; margin-bottom: 10px;">' +
                 '<h4><?php echo esc_js(__('Portal #', 'post-forwarder')); ?>' + (portalCount + 1) + '</h4>' +
                 '<table class="form-table">' +
-                '<tr><th><?php echo esc_js(__('Portal Key', 'post-forwarder')); ?></th><td><input type="text" name="portals[' + portalCount + '][key]" placeholder="<?php echo esc_js(__('e.g., sociaalweb', 'post-forwarder')); ?>" style="width: 200px;" /></td></tr>' +
-                '<tr><th><?php echo esc_js(__('Portal Name', 'post-forwarder')); ?></th><td><input type="text" name="portals[' + portalCount + '][name]" placeholder="<?php echo esc_js(__('e.g., Sociaalweb Portal', 'post-forwarder')); ?>" style="width: 300px;" /></td></tr>' +
+                '<tr><th><?php echo esc_js(__('Portal Key', 'post-forwarder')); ?></th><td><input type="text" name="portals[' + portalCount + '][key]" placeholder="<?php echo esc_js(__('e.g., portal1', 'post-forwarder')); ?>" style="width: 200px;" /></td></tr>' +
+                '<tr><th><?php echo esc_js(__('Portal Name', 'post-forwarder')); ?></th><td><input type="text" name="portals[' + portalCount + '][name]" placeholder="<?php echo esc_js(__('e.g., Example Portal', 'post-forwarder')); ?>" style="width: 300px;" /></td></tr>' +
                 '<tr><th><?php echo esc_js(__('URL', 'post-forwarder')); ?></th><td><input type="url" name="portals[' + portalCount + '][url]" placeholder="https://example.com" style="width: 400px;" /></td></tr>' +
                 '<tr><th><?php echo esc_js(__('User ID', 'post-forwarder')); ?></th><td><input type="text" name="portals[' + portalCount + '][user]" placeholder="1728" style="width: 100px;" /></td></tr>' +
                 '<tr><th><?php echo esc_js(__('App Password', 'post-forwarder')); ?></th><td><input type="text" name="portals[' + portalCount + '][password]" placeholder="xxxx-xxxx-xxxx-xxxx" style="width: 300px;" /></td></tr>' +
