@@ -29,6 +29,52 @@ define('POST_FORWARDER_VERSION', '2.1.0');
 define('POST_FORWARDER_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('POST_FORWARDER_PLUGIN_URL', plugin_dir_url(__FILE__));
 
+/**
+ * Return the LinkedIn app Client ID.
+ *
+ * Checks the POST_FORWARDER_LINKEDIN_CLIENT_ID constant first, then falls back
+ * to the per-portal value stored in the database.
+ *
+ * @param string $fallback Per-portal value stored in settings.
+ * @return string
+ */
+function post_forwarder_linkedin_client_id( $fallback = '' ) {
+    if ( defined( 'POST_FORWARDER_LINKEDIN_CLIENT_ID' ) && POST_FORWARDER_LINKEDIN_CLIENT_ID ) {
+        return POST_FORWARDER_LINKEDIN_CLIENT_ID;
+    }
+    return $fallback;
+}
+
+/**
+ * Return the LinkedIn app Client Secret.
+ *
+ * Checks the POST_FORWARDER_LINKEDIN_CLIENT_SECRET constant first, then falls
+ * back to the per-portal value stored in the database.
+ *
+ * @param string $fallback Per-portal value stored in settings.
+ * @return string
+ */
+function post_forwarder_linkedin_client_secret( $fallback = '' ) {
+    if ( defined( 'POST_FORWARDER_LINKEDIN_CLIENT_SECRET' ) && POST_FORWARDER_LINKEDIN_CLIENT_SECRET ) {
+        return POST_FORWARDER_LINKEDIN_CLIENT_SECRET;
+    }
+    return $fallback;
+}
+
+/**
+ * Log a message to the PHP error log.
+ *
+ * Only active when WP_DEBUG_LOG is enabled.
+ *
+ * @param string $message The message to log.
+ */
+function post_forwarder_log_error( $message ) {
+    if ( defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+        error_log( '[Post Forwarder] ' . $message );
+    }
+}
+
 // Register settings
 add_action('admin_menu', function () {
     add_options_page(
@@ -173,71 +219,186 @@ function post_forwarding_settings_page() {
         wp_die(esc_html__('You do not have sufficient permissions to access this page.', 'post-forwarder'));
     }
     
-    $options = get_option('post_forwarding_options', array());
+    $options = get_option( 'post_forwarding_options', array() );
 
-    // Handle LinkedIn OAuth callback
+    if ( is_string( $options ) ) {
+        $options = json_decode( $options, true );
+        if ( ! is_array( $options ) ) {
+            $options = array();
+        }
+    }
+
+    // Handle LinkedIn OAuth callback.
     $linkedin_oauth_notice = '';
-    if (isset($_GET['linkedin_oauth_callback'], $_GET['code'], $_GET['state'])) {
-        $state_parts = explode('|', sanitize_text_field(wp_unslash($_GET['state'])));
-        if (count($state_parts) === 2) {
-            $portal_key_oauth = sanitize_key($state_parts[0]);
-            $nonce_val_oauth  = $state_parts[1];
-            if (wp_verify_nonce($nonce_val_oauth, 'linkedin_oauth_' . $portal_key_oauth)) {
-                $mappings_oauth = json_decode(isset($options['mappings']) ? $options['mappings'] : '{}', true);
-                if (is_array($mappings_oauth) && isset($mappings_oauth[$portal_key_oauth])
-                    && isset($mappings_oauth[$portal_key_oauth]['type'])
-                    && $mappings_oauth[$portal_key_oauth]['type'] === 'linkedin'
-                ) {
-                    $oauth_client_id     = $mappings_oauth[$portal_key_oauth]['client_id'];
-                    $oauth_client_secret = $mappings_oauth[$portal_key_oauth]['client_secret'];
-                    $oauth_redirect_uri  = admin_url('options-general.php?page=post-forwarding&linkedin_oauth_callback=1');
-                    $oauth_code          = sanitize_text_field(wp_unslash($_GET['code']));
+    if ( isset( $_GET['linkedin_oauth_callback'] ) ) {
+        if ( isset( $_GET['error'] ) || isset( $_GET['error_description'] ) ) {
+            $li_error_desc = isset( $_GET['error_description'] )
+                ? sanitize_text_field( wp_unslash( $_GET['error_description'] ) )
+                : sanitize_text_field( wp_unslash( $_GET['error'] ) );
 
-                    $token_resp = wp_remote_post('https://www.linkedin.com/oauth/v2/accessToken', array(
-                        'body'    => array(
-                            'grant_type'    => 'authorization_code',
-                            'code'          => $oauth_code,
-                            'client_id'     => $oauth_client_id,
-                            'client_secret' => $oauth_client_secret,
-                            'redirect_uri'  => $oauth_redirect_uri,
-                        ),
-                        'timeout' => 30,
-                    ));
-
-                    if (!is_wp_error($token_resp)) {
-                        $token_data = json_decode(wp_remote_retrieve_body($token_resp), true);
-                        if (isset($token_data['access_token'])) {
-                            $mappings_oauth[$portal_key_oauth]['access_token'] = $token_data['access_token'];
-                            $mappings_oauth[$portal_key_oauth]['token_expires'] = time() + (int) $token_data['expires_in'];
-                            if (isset($token_data['refresh_token'])) {
-                                $mappings_oauth[$portal_key_oauth]['refresh_token']         = $token_data['refresh_token'];
-                                $mappings_oauth[$portal_key_oauth]['refresh_token_expires'] = time() + (int) $token_data['refresh_token_expires_in'];
-                            }
-                            $options['mappings'] = wp_json_encode($mappings_oauth);
-                            update_option('post_forwarding_options', $options);
-                            $options = get_option('post_forwarding_options', array());
-                            $linkedin_oauth_notice = '<div class="notice notice-success is-dismissible"><p>' . esc_html__('LinkedIn account connected successfully!', 'post-forwarder') . '</p></div>';
-                        } else {
-                            $err = isset($token_data['error_description']) ? $token_data['error_description'] : 'Unknown error.';
-                            /* translators: %s: error message */
-                            $linkedin_oauth_notice = '<div class="notice notice-error is-dismissible"><p>' . esc_html(sprintf(__('LinkedIn connection failed: %s', 'post-forwarder'), $err)) . '</p></div>';
+            // Store the error on the portal so it shows in the UI.
+            if ( isset( $_GET['state'] ) ) {
+                $err_state_parts = explode( '|', sanitize_text_field( wp_unslash( $_GET['state'] ) ) );
+                if ( count( $err_state_parts ) === 2 ) {
+                    $err_portal_key = sanitize_key( $err_state_parts[0] );
+                    $err_mappings   = isset( $options['mappings'] ) ? $options['mappings'] : array();
+                    if ( ! is_array( $err_mappings ) ) {
+                        $err_mappings = json_decode( is_string( $err_mappings ) ? $err_mappings : '{}', true );
+                        if ( ! is_array( $err_mappings ) ) {
+                            $err_mappings = array();
                         }
-                    } else {
-                        $linkedin_oauth_notice = '<div class="notice notice-error is-dismissible"><p>' . esc_html__('LinkedIn connection failed: could not reach LinkedIn servers.', 'post-forwarder') . '</p></div>';
+                    }
+                    if ( isset( $err_mappings[ $err_portal_key ] ) ) {
+                        $err_mappings[ $err_portal_key ]['last_error'] = $li_error_desc;
+                        $options['mappings'] = wp_json_encode( $err_mappings );
+                        update_option( 'post_forwarding_options', $options );
+                        $options = get_option( 'post_forwarding_options', array() );
+                        if ( is_string( $options ) ) {
+                            $options = json_decode( $options, true );
+                            if ( ! is_array( $options ) ) {
+                                $options = array();
+                            }
+                        }
                     }
                 }
             }
+
+            /* translators: %s: error description returned by LinkedIn */
+            $linkedin_oauth_notice = '<div class="notice notice-error is-dismissible"><p>'
+                . esc_html( sprintf( __( 'LinkedIn connection failed: %s', 'post-forwarder' ), $li_error_desc ) )
+                . '</p></div>';
+
+        } elseif ( isset( $_GET['code'], $_GET['state'] ) ) {
+            $state_parts = explode( '|', sanitize_text_field( wp_unslash( $_GET['state'] ) ) );
+
+            if ( count( $state_parts ) !== 2 ) {
+                $linkedin_oauth_notice = '<div class="notice notice-error is-dismissible"><p>'
+                    . esc_html__( 'LinkedIn connection failed: Invalid state parameter.', 'post-forwarder' )
+                    . '</p></div>';
+            } else {
+                $portal_key = sanitize_key( $state_parts[0] );
+                $nonce_val  = $state_parts[1];
+
+                if ( ! wp_verify_nonce( $nonce_val, 'linkedin_oauth_' . $portal_key ) ) {
+                    $linkedin_oauth_notice = '<div class="notice notice-error is-dismissible"><p>'
+                        . esc_html__( 'LinkedIn connection failed: Security check failed.', 'post-forwarder' )
+                        . '</p></div>';
+                } else {
+                    $mappings = isset( $options['mappings'] ) ? $options['mappings'] : array();
+                    if ( ! is_array( $mappings ) ) {
+                        $mappings = json_decode( is_string( $mappings ) ? $mappings : '{}', true );
+                        if ( ! is_array( $mappings ) ) {
+                            $mappings = array();
+                        }
+                    }
+
+                    if ( ! isset( $mappings[ $portal_key ]['type'] ) || 'linkedin' !== $mappings[ $portal_key ]['type'] ) {
+                        $linkedin_oauth_notice = '<div class="notice notice-error is-dismissible"><p>'
+                            . esc_html__( 'LinkedIn connection failed: Portal configuration not found.', 'post-forwarder' )
+                            . '</p></div>';
+                    } else {
+                        $redirect_uri = admin_url( 'options-general.php?page=post-forwarding&linkedin_oauth_callback=1' );
+                        $auth_code    = sanitize_text_field( wp_unslash( $_GET['code'] ) );
+
+                        $token_response = wp_remote_post(
+                            'https://www.linkedin.com/oauth/v2/accessToken',
+                            array(
+                                'headers' => array( 'Content-Type' => 'application/x-www-form-urlencoded' ),
+                                'body'    => array(
+                                    'grant_type'    => 'authorization_code',
+                                    'code'          => $auth_code,
+                                    'client_id'     => post_forwarder_linkedin_client_id( isset( $mappings[ $portal_key ]['client_id'] ) ? $mappings[ $portal_key ]['client_id'] : '' ),
+                                    'client_secret' => post_forwarder_linkedin_client_secret( isset( $mappings[ $portal_key ]['client_secret'] ) ? $mappings[ $portal_key ]['client_secret'] : '' ),
+                                    'redirect_uri'  => $redirect_uri,
+                                ),
+                                'timeout' => 30,
+                            )
+                        );
+
+                        if ( is_wp_error( $token_response ) ) {
+                            $error_msg = $token_response->get_error_message();
+                            post_forwarder_log_error( 'LinkedIn token request failed: ' . $error_msg );
+                            /* translators: %s: error message */
+                            $linkedin_oauth_notice = '<div class="notice notice-error is-dismissible"><p>'
+                                . esc_html( sprintf( __( 'LinkedIn connection failed: %s', 'post-forwarder' ), $error_msg ) )
+                                . '</p></div>';
+                        } else {
+                            $http_code  = wp_remote_retrieve_response_code( $token_response );
+                            $token_data = json_decode( wp_remote_retrieve_body( $token_response ), true );
+
+                            if ( 200 === $http_code && isset( $token_data['access_token'] ) ) {
+                                unset( $mappings[ $portal_key ]['last_error'] );
+                                $mappings[ $portal_key ]['access_token']  = $token_data['access_token'];
+                                $mappings[ $portal_key ]['token_expires'] = time() + (int) ( isset( $token_data['expires_in'] ) ? $token_data['expires_in'] : 3600 );
+                                if ( isset( $token_data['refresh_token'] ) ) {
+                                    $mappings[ $portal_key ]['refresh_token']         = $token_data['refresh_token'];
+                                    $mappings[ $portal_key ]['refresh_token_expires'] = time() + (int) ( isset( $token_data['refresh_token_expires_in'] ) ? $token_data['refresh_token_expires_in'] : 2592000 );
+                                }
+
+                                // Fetch the member's person URN via the OpenID Connect userinfo endpoint (requires openid + profile scopes).
+                                $me_response = wp_remote_get(
+                                    'https://api.linkedin.com/v2/userinfo',
+                                    array(
+                                        'headers' => array( 'Authorization' => 'Bearer ' . $token_data['access_token'] ),
+                                        'timeout' => 10,
+                                    )
+                                );
+                                if ( ! is_wp_error( $me_response ) && 200 === wp_remote_retrieve_response_code( $me_response ) ) {
+                                    $me_data = json_decode( wp_remote_retrieve_body( $me_response ), true );
+                                    // The `sub` field contains the member ID (e.g. "AbCdEf123").
+                                    if ( isset( $me_data['sub'] ) ) {
+                                        $mappings[ $portal_key ]['person_urn'] = 'urn:li:person:' . $me_data['sub'];
+                                    }
+                                }
+
+                                $options['mappings'] = wp_json_encode( $mappings );
+                                update_option( 'post_forwarding_options', $options );
+                                $options = get_option( 'post_forwarding_options', array() );
+                                if ( is_string( $options ) ) {
+                                    $options = json_decode( $options, true );
+                                    if ( ! is_array( $options ) ) {
+                                        $options = array();
+                                    }
+                                }
+                                $linkedin_oauth_notice = '<div class="notice notice-success is-dismissible"><p>'
+                                    . esc_html__( 'LinkedIn account connected successfully!', 'post-forwarder' )
+                                    . '</p></div>';
+                            } else {
+                                $err = isset( $token_data['error_description'] )
+                                    ? $token_data['error_description']
+                                    : ( isset( $token_data['error'] ) ? $token_data['error'] : 'Unknown error' );
+                                post_forwarder_log_error( 'LinkedIn token exchange failed: ' . $err . ' (HTTP ' . $http_code . ')' );
+                                $mappings[ $portal_key ]['last_error'] = $err;
+                                $options['mappings'] = wp_json_encode( $mappings );
+                                update_option( 'post_forwarding_options', $options );
+                                /* translators: 1: error message, 2: HTTP status code */
+                                $linkedin_oauth_notice = '<div class="notice notice-error is-dismissible"><p>'
+                                    . esc_html( sprintf( __( 'LinkedIn connection failed: %s (HTTP %d)', 'post-forwarder' ), $err, $http_code ) )
+                                    . '</p></div>';
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            $linkedin_oauth_notice = '<div class="notice notice-error is-dismissible"><p>'
+                . esc_html__( 'LinkedIn connection failed: Missing authorization code.', 'post-forwarder' )
+                . '</p></div>';
         }
     }
 
     // Handle form submission for the new interface
     if (isset($_POST['submit_portals']) && isset($_POST['portals_nonce']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['portals_nonce'])), 'save_portals')) {
         $portals = array();
-        $existing_mappings_for_save = json_decode(isset($options['mappings']) ? $options['mappings'] : '{}', true);
-        if (!is_array($existing_mappings_for_save)) $existing_mappings_for_save = array();
+        $existing_mappings_for_save = isset($options['mappings']) ? $options['mappings'] : array();
+        if (!is_array($existing_mappings_for_save)) {
+            $mappings_json = is_string($existing_mappings_for_save) ? $existing_mappings_for_save : '{}';
+            $existing_mappings_for_save = json_decode($mappings_json, true);
+            if (!is_array($existing_mappings_for_save)) $existing_mappings_for_save = array();
+        }
 
         if (isset($_POST['portals']) && is_array($_POST['portals'])) {
-            $portals_raw = map_deep(wp_unslash($_POST['portals']), 'sanitize_text_field');
+            $portals_raw = wp_unslash($_POST['portals']);
 
             foreach ($portals_raw as $index => $portal) {
                 if (!is_array($portal) || empty($portal['key']) || empty($portal['name'])) {
@@ -254,10 +415,10 @@ function post_forwarding_settings_page() {
                         'client_secret' => sanitize_text_field(isset($portal['client_secret']) ? $portal['client_secret'] : ''),
                         'author_urn'    => sanitize_text_field(isset($portal['author_urn'])    ? $portal['author_urn']    : ''),
                     );
-                    // Preserve OAuth tokens — never overwrite via form submission
-                    foreach (array('access_token', 'refresh_token', 'token_expires', 'refresh_token_expires') as $token_field) {
-                        if (isset($existing_mappings_for_save[$key][$token_field])) {
-                            $portals[$key][$token_field] = $existing_mappings_for_save[$key][$token_field];
+                    // Preserve OAuth tokens and derived fields — never overwrite via form submission.
+                    foreach ( array( 'access_token', 'refresh_token', 'token_expires', 'refresh_token_expires', 'person_urn', 'last_error' ) as $token_field ) {
+                        if ( isset( $existing_mappings_for_save[ $key ][ $token_field ] ) ) {
+                            $portals[ $key ][ $token_field ] = $existing_mappings_for_save[ $key ][ $token_field ];
                         }
                     }
                 } else {
@@ -280,11 +441,22 @@ function post_forwarding_settings_page() {
         echo '<div class="notice notice-success"><p>' . esc_html__('Accounts saved successfully!', 'post-forwarder') . '</p></div>';
     }
     
-    // Parse existing mappings
-    $mappings_json = isset($options['mappings']) ? $options['mappings'] : '{}';
-    $mappings = json_decode($mappings_json, true);
-    if (!is_array($mappings)) $mappings = array();
-    
+    // Parse existing mappings.
+    $mappings = isset( $options['mappings'] ) ? $options['mappings'] : array();
+    if ( ! is_array( $mappings ) ) {
+        $mappings_json = is_string( $mappings ) ? $mappings : '{}';
+        $mappings      = json_decode( $mappings_json, true );
+        if ( ! is_array( $mappings ) ) {
+            $mappings = array();
+        }
+    }
+
+    // True when app-wide LinkedIn credentials are configured as PHP constants.
+    $li_creds_from_constants = defined( 'POST_FORWARDER_LINKEDIN_CLIENT_ID' )
+        && defined( 'POST_FORWARDER_LINKEDIN_CLIENT_SECRET' )
+        && POST_FORWARDER_LINKEDIN_CLIENT_ID
+        && POST_FORWARDER_LINKEDIN_CLIENT_SECRET;
+
     ?>
     <div class="wrap">
         <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
@@ -316,90 +488,90 @@ function post_forwarding_settings_page() {
             <?php wp_nonce_field('save_portals', 'portals_nonce'); ?>
             
             <div id="portals-container">
-                <div style="background: #f9f9f9; padding: 15px; margin-bottom: 15px; border-left: 4px solid #0073aa;">
-                    <p><strong><?php esc_html_e('How it works:', 'post-forwarder'); ?></strong></p>
-                    <ul>
-                        <li><strong><?php esc_html_e('Portal Key:', 'post-forwarder'); ?></strong> <?php esc_html_e('A unique identifier (like "portal1") - this is what you\'ll select when forwarding posts', 'post-forwarder'); ?></li>
-                        <li><strong><?php esc_html_e('Portal Name:', 'post-forwarder'); ?></strong> <?php esc_html_e('A friendly display name that appears in the interface', 'post-forwarder'); ?></li>
-                        <li><strong><?php esc_html_e('URL:', 'post-forwarder'); ?></strong> <?php esc_html_e('The destination WordPress site URL', 'post-forwarder'); ?></li>
-                        <li><strong><?php esc_html_e('User ID & App Password:', 'post-forwarder'); ?></strong> <?php esc_html_e('WordPress user ID and application password for API access', 'post-forwarder'); ?></li>
-                    </ul>
+                <?php if ( $li_creds_from_constants ) : ?>
+                <div style="background: #edf7ed; padding: 12px 15px; margin-bottom: 15px; border-left: 4px solid #00a32a;">
+                    <p><strong>&#10003; <?php esc_html_e( 'LinkedIn app credentials loaded from PHP constants.', 'post-forwarder' ); ?></strong><br>
+                    <?php esc_html_e( 'To create a LinkedIn account, set a Key and Name below, save, then click Connect with LinkedIn.', 'post-forwarder' ); ?></p>
                 </div>
+                <?php endif; ?>
 
-                <?php if (empty($mappings)): ?>
+                <?php if ( empty( $mappings ) ) : ?>
                     <div class="portal-row" style="border: 1px solid #ddd; padding: 15px; margin-bottom: 10px;" data-type="wordpress">
-                        <h4><?php esc_html_e('Account #1', 'post-forwarder'); ?></h4>
+                        <h4><?php esc_html_e( 'Account #1', 'post-forwarder' ); ?></h4>
                         <table class="form-table">
                             <tr>
-                                <th><?php esc_html_e('Account Type', 'post-forwarder'); ?></th>
+                                <th><?php esc_html_e( 'Account Type', 'post-forwarder' ); ?></th>
                                 <td>
                                     <select name="portals[0][type]" class="portal-type-select">
-                                        <option value="wordpress"><?php esc_html_e('WordPress Portal', 'post-forwarder'); ?></option>
-                                        <option value="linkedin"><?php esc_html_e('LinkedIn Account', 'post-forwarder'); ?></option>
+                                        <option value="wordpress"><?php esc_html_e( 'WordPress Portal', 'post-forwarder' ); ?></option>
+                                        <option value="linkedin"><?php esc_html_e( 'LinkedIn Account', 'post-forwarder' ); ?></option>
                                     </select>
                                 </td>
                             </tr>
                             <tr>
-                                <th><?php esc_html_e('Account Key', 'post-forwarder'); ?></th>
-                                <td><input type="text" name="portals[0][key]" placeholder="<?php esc_attr_e('e.g., portal1', 'post-forwarder'); ?>" style="width: 200px;" /></td>
+                                <th><?php esc_html_e( 'Account Key', 'post-forwarder' ); ?></th>
+                                <td><input type="text" name="portals[0][key]" placeholder="<?php esc_attr_e( 'e.g., portal1', 'post-forwarder' ); ?>" style="width: 200px;" /></td>
                             </tr>
                             <tr>
-                                <th><?php esc_html_e('Account Name', 'post-forwarder'); ?></th>
-                                <td><input type="text" name="portals[0][name]" placeholder="<?php esc_attr_e('e.g., Example Portal', 'post-forwarder'); ?>" style="width: 300px;" /></td>
+                                <th><?php esc_html_e( 'Account Name', 'post-forwarder' ); ?></th>
+                                <td><input type="text" name="portals[0][name]" placeholder="<?php esc_attr_e( 'e.g., Example Portal', 'post-forwarder' ); ?>" style="width: 300px;" /></td>
                             </tr>
                             <tr class="fields-wordpress">
-                                <th><?php esc_html_e('URL', 'post-forwarder'); ?></th>
+                                <th><?php esc_html_e( 'URL', 'post-forwarder' ); ?></th>
                                 <td><input type="url" name="portals[0][url]" placeholder="https://example.com" style="width: 400px;" /></td>
                             </tr>
                             <tr class="fields-wordpress">
-                                <th><?php esc_html_e('User ID', 'post-forwarder'); ?></th>
+                                <th><?php esc_html_e( 'User ID', 'post-forwarder' ); ?></th>
                                 <td><input type="text" name="portals[0][user]" placeholder="1728" style="width: 100px;" /></td>
                             </tr>
                             <tr class="fields-wordpress">
-                                <th><?php esc_html_e('App Password', 'post-forwarder'); ?></th>
+                                <th><?php esc_html_e( 'App Password', 'post-forwarder' ); ?></th>
                                 <td><input type="text" name="portals[0][password]" placeholder="xxxx-xxxx-xxxx-xxxx" style="width: 300px;" /></td>
                             </tr>
+                            <?php if ( ! $li_creds_from_constants ) : ?>
                             <tr class="fields-linkedin" style="display:none;">
-                                <th><?php esc_html_e('Client ID', 'post-forwarder'); ?></th>
-                                <td><input type="text" name="portals[0][client_id]" placeholder="<?php esc_attr_e('LinkedIn App Client ID', 'post-forwarder'); ?>" style="width: 300px;" /></td>
+                                <th><?php esc_html_e( 'Client ID', 'post-forwarder' ); ?></th>
+                                <td><input type="text" name="portals[0][client_id]" placeholder="<?php esc_attr_e( 'LinkedIn App Client ID', 'post-forwarder' ); ?>" style="width: 300px;" /></td>
                             </tr>
                             <tr class="fields-linkedin" style="display:none;">
-                                <th><?php esc_html_e('Client Secret', 'post-forwarder'); ?></th>
-                                <td><input type="text" name="portals[0][client_secret]" placeholder="<?php esc_attr_e('LinkedIn App Client Secret', 'post-forwarder'); ?>" style="width: 300px;" /></td>
+                                <th><?php esc_html_e( 'Client Secret', 'post-forwarder' ); ?></th>
+                                <td><input type="text" name="portals[0][client_secret]" placeholder="<?php esc_attr_e( 'LinkedIn App Client Secret', 'post-forwarder' ); ?>" style="width: 300px;" /></td>
                             </tr>
                             <tr class="fields-linkedin" style="display:none;">
-                                <th><?php esc_html_e('Author URN', 'post-forwarder'); ?></th>
+                                <th><?php esc_html_e( 'Author URN', 'post-forwarder' ); ?></th>
                                 <td>
                                     <input type="text" name="portals[0][author_urn]" placeholder="urn:li:person:XXXX or urn:li:organization:XXXX" style="width: 420px;" />
-                                    <p class="description"><?php esc_html_e('Your LinkedIn person or organization URN.', 'post-forwarder'); ?></p>
+                                    <p class="description"><?php esc_html_e( 'Your LinkedIn person or organization URN.', 'post-forwarder' ); ?></p>
                                 </td>
                             </tr>
+                            <?php endif; ?>
                             <tr class="fields-linkedin" style="display:none;">
-                                <th><?php esc_html_e('Connection Status', 'post-forwarder'); ?></th>
-                                <td><span style="color:#666;"><?php esc_html_e('Save the account first, then click Connect to LinkedIn.', 'post-forwarder'); ?></span></td>
+                                <th><?php esc_html_e( 'Connection Status', 'post-forwarder' ); ?></th>
+                                <td><span style="color:#666;"><?php esc_html_e( 'Save the account first, then click Connect with LinkedIn.', 'post-forwarder' ); ?></span></td>
                             </tr>
                         </table>
-                        <button type="button" class="button test-connection" style="margin-right: 8px;"><?php esc_html_e('Test Connection', 'post-forwarder'); ?></button>
+                        <button type="button" class="button test-connection" style="margin-right: 8px;"><?php esc_html_e( 'Test Connection', 'post-forwarder' ); ?></button>
                         <span class="connection-result" style="font-weight: 600;"></span>
-                        <button type="button" class="button remove-portal" style="float: right;"><?php esc_html_e('Remove Account', 'post-forwarder'); ?></button>
+                        <button type="button" class="button remove-portal" style="float: right;"><?php esc_html_e( 'Remove Account', 'post-forwarder' ); ?></button>
                     </div>
                 <?php else: ?>
                     <?php $i = 0; foreach ($mappings as $key => $mapping): ?>
                         <?php
                         $mapping_type = isset($mapping['type']) ? $mapping['type'] : 'wordpress';
                         $is_linkedin  = ($mapping_type === 'linkedin');
-                        $is_connected = $is_linkedin
-                            && !empty($mapping['access_token'])
-                            && (!isset($mapping['token_expires']) || $mapping['token_expires'] > time());
-                        $oauth_redirect = admin_url('options-general.php?page=post-forwarding&linkedin_oauth_callback=1');
-                        $oauth_state    = $key . '|' . wp_create_nonce('linkedin_oauth_' . $key);
-                        $oauth_url      = 'https://www.linkedin.com/oauth/v2/authorization?' . http_build_query(array(
+                        $is_connected   = $is_linkedin
+                            && ! empty( $mapping['access_token'] )
+                            && ( ! isset( $mapping['token_expires'] ) || $mapping['token_expires'] > time() );
+                        $has_credentials = $li_creds_from_constants || ! empty( $mapping['client_id'] );
+                        $oauth_redirect  = admin_url( 'options-general.php?page=post-forwarding&linkedin_oauth_callback=1' );
+                        $oauth_state     = $key . '|' . wp_create_nonce( 'linkedin_oauth_' . $key );
+                        $oauth_url       = 'https://www.linkedin.com/oauth/v2/authorization?' . http_build_query( array(
                             'response_type' => 'code',
-                            'client_id'     => isset($mapping['client_id']) ? $mapping['client_id'] : '',
+                            'client_id'     => post_forwarder_linkedin_client_id( isset( $mapping['client_id'] ) ? $mapping['client_id'] : '' ),
                             'redirect_uri'  => $oauth_redirect,
                             'state'         => $oauth_state,
-                            'scope'         => 'w_member_social w_organization_social',
-                        ));
+                            'scope'         => 'w_member_social openid profile',
+                        ) );
                         ?>
                         <div class="portal-row" style="border: 1px solid #ddd; padding: 15px; margin-bottom: 10px;" data-type="<?php echo esc_attr($mapping_type); ?>">
                             <h4>
@@ -441,32 +613,48 @@ function post_forwarding_settings_page() {
                                     <th><?php esc_html_e('App Password', 'post-forwarder'); ?></th>
                                     <td><input type="text" name="portals[<?php echo esc_attr($i); ?>][password]" value="<?php echo esc_attr(isset($mapping['password']) ? $mapping['password'] : ''); ?>" style="width: 300px;" /></td>
                                 </tr>
+                                <?php if ( ! $li_creds_from_constants ) : ?>
                                 <tr class="fields-linkedin" <?php echo $is_linkedin ? '' : 'style="display:none;"'; ?>>
-                                    <th><?php esc_html_e('Client ID', 'post-forwarder'); ?></th>
-                                    <td><input type="text" name="portals[<?php echo esc_attr($i); ?>][client_id]" value="<?php echo esc_attr(isset($mapping['client_id']) ? $mapping['client_id'] : ''); ?>" style="width: 300px;" /></td>
+                                    <th><?php esc_html_e( 'Client ID', 'post-forwarder' ); ?></th>
+                                    <td><input type="text" name="portals[<?php echo esc_attr( $i ); ?>][client_id]" value="<?php echo esc_attr( isset( $mapping['client_id'] ) ? $mapping['client_id'] : '' ); ?>" style="width: 300px;" /></td>
                                 </tr>
                                 <tr class="fields-linkedin" <?php echo $is_linkedin ? '' : 'style="display:none;"'; ?>>
-                                    <th><?php esc_html_e('Client Secret', 'post-forwarder'); ?></th>
-                                    <td><input type="text" name="portals[<?php echo esc_attr($i); ?>][client_secret]" value="<?php echo esc_attr(isset($mapping['client_secret']) ? $mapping['client_secret'] : ''); ?>" style="width: 300px;" /></td>
+                                    <th><?php esc_html_e( 'Client Secret', 'post-forwarder' ); ?></th>
+                                    <td><input type="text" name="portals[<?php echo esc_attr( $i ); ?>][client_secret]" value="<?php echo esc_attr( isset( $mapping['client_secret'] ) ? $mapping['client_secret'] : '' ); ?>" style="width: 300px;" /></td>
                                 </tr>
                                 <tr class="fields-linkedin" <?php echo $is_linkedin ? '' : 'style="display:none;"'; ?>>
-                                    <th><?php esc_html_e('Author URN', 'post-forwarder'); ?></th>
+                                    <th><?php esc_html_e( 'Author URN', 'post-forwarder' ); ?></th>
                                     <td>
-                                        <input type="text" name="portals[<?php echo esc_attr($i); ?>][author_urn]" value="<?php echo esc_attr(isset($mapping['author_urn']) ? $mapping['author_urn'] : ''); ?>" placeholder="urn:li:person:XXXX or urn:li:organization:XXXX" style="width: 420px;" />
-                                        <p class="description"><?php esc_html_e('Your LinkedIn person or organization URN.', 'post-forwarder'); ?></p>
+                                        <input type="text" name="portals[<?php echo esc_attr( $i ); ?>][author_urn]" value="<?php echo esc_attr( isset( $mapping['author_urn'] ) ? $mapping['author_urn'] : '' ); ?>" placeholder="urn:li:person:XXXX or urn:li:organization:XXXX" style="width: 420px;" />
+                                        <p class="description">
+                                            <?php esc_html_e( 'For personal posts: urn:li:person:YOUR_ID. For organization posts: urn:li:organization:YOUR_ORG_ID (requires Community Management API product on your LinkedIn app).', 'post-forwarder' ); ?>
+                                            <?php if ( ! empty( $mapping['person_urn'] ) ) : ?>
+                                                <br><strong><?php esc_html_e( 'Auto-detected person URN:', 'post-forwarder' ); ?></strong> <?php echo esc_html( $mapping['person_urn'] ); ?>
+                                            <?php endif; ?>
+                                        </p>
                                     </td>
                                 </tr>
+                                <?php endif; ?>
                                 <tr class="fields-linkedin" <?php echo $is_linkedin ? '' : 'style="display:none;"'; ?>>
                                     <th><?php esc_html_e('Connection Status', 'post-forwarder'); ?></th>
                                     <td>
-                                        <?php if ($is_connected): ?>
-                                            <span style="color:#00a32a;font-weight:600;">&#10003; <?php esc_html_e('Connected', 'post-forwarder'); ?></span>
-                                            <a href="<?php echo esc_url($oauth_url); ?>" class="button button-secondary" style="margin-left:10px;"><?php esc_html_e('Reconnect', 'post-forwarder'); ?></a>
-                                        <?php elseif (!empty($mapping['client_id'])): ?>
-                                            <span style="color:#666;"><?php esc_html_e('Not connected', 'post-forwarder'); ?></span>
-                                            <a href="<?php echo esc_url($oauth_url); ?>" class="button" style="margin-left:10px;"><?php esc_html_e('Connect to LinkedIn', 'post-forwarder'); ?></a>
-                                        <?php else: ?>
-                                            <span style="color:#666;"><?php esc_html_e('Save Client ID and Secret first, then connect.', 'post-forwarder'); ?></span>
+                                        <?php if ( $is_connected ) : ?>
+                                            <span style="color:#00a32a;font-weight:600;">&#10003; <?php esc_html_e( 'Connected', 'post-forwarder' ); ?></span>
+                                            <?php if ( $is_linkedin && ! empty( $mapping['person_urn'] ) ) : ?>
+                                                <span style="color:#666;font-size:12px;margin-left:8px;"><?php echo esc_html( $mapping['person_urn'] ); ?></span>
+                                            <?php endif; ?>
+                                            <a href="<?php echo esc_url( $oauth_url ); ?>" class="button button-secondary" style="margin-left:10px;"><?php esc_html_e( 'Reconnect', 'post-forwarder' ); ?></a>
+                                        <?php elseif ( $has_credentials ) : ?>
+                                            <span style="color:#666;"><?php esc_html_e( 'Not connected', 'post-forwarder' ); ?></span>
+                                            <a href="<?php echo esc_url( $oauth_url ); ?>" class="button" style="margin-left:10px;background:#0a66c2;border-color:#0a66c2;color:#fff;">&#10132; <?php esc_html_e( 'Connect with LinkedIn', 'post-forwarder' ); ?></a>
+                                        <?php else : ?>
+                                            <span style="color:#666;"><?php esc_html_e( 'Save Client ID and Secret first, then connect.', 'post-forwarder' ); ?></span>
+                                        <?php endif; ?>
+                                        <?php if (!empty($mapping['last_error']) && !$is_connected): ?>
+                                            <p class="description" style="color:#cc0000;margin-top:6px;">
+                                                <strong><?php esc_html_e('Last error:', 'post-forwarder'); ?></strong>
+                                                <?php echo esc_html($mapping['last_error']); ?>
+                                            </p>
                                         <?php endif; ?>
                                         <?php if ($is_linkedin && isset($mapping['token_expires'])): ?>
                                             <p class="description">
@@ -506,7 +694,7 @@ function post_forwarding_settings_page() {
                 <tr>
                     <th scope="row"><?php esc_html_e('Mappings (JSON)', 'post-forwarder'); ?></th>
                     <td>
-                        <textarea name="post_forwarding_options[mappings]" rows="10" cols="70"><?php echo esc_textarea($mappings_json); ?></textarea><br>
+                        <textarea name="post_forwarding_options[mappings]" rows="10" cols="70"><?php echo esc_textarea(wp_json_encode($mappings)); ?></textarea><br>
                         <small><?php esc_html_e('Advanced users can edit the JSON directly. Use the form above for easier configuration.', 'post-forwarder'); ?></small>
                     </td>
                 </tr>
@@ -517,7 +705,8 @@ function post_forwarding_settings_page() {
 
     <script>
     jQuery(document).ready(function($) {
-        var portalCount = <?php echo count($mappings); ?>;
+        var portalCount          = <?php echo count( $mappings ); ?>;
+        var liCredsFromConstants = <?php echo $li_creds_from_constants ? 'true' : 'false'; ?>;
 
         // Toggle field visibility based on account type
         function updatePortalFields($row) {
@@ -539,28 +728,30 @@ function post_forwarding_settings_page() {
 
         $('#add-portal').click(function() {
             var n = portalCount;
+            var liCredFields = liCredsFromConstants ? '' :
+                '<tr class="fields-linkedin" style="display:none;"><th><?php echo esc_js( __( 'Client ID', 'post-forwarder' ) ); ?></th><td><input type="text" name="portals[' + n + '][client_id]" style="width: 300px;" /></td></tr>' +
+                '<tr class="fields-linkedin" style="display:none;"><th><?php echo esc_js( __( 'Client Secret', 'post-forwarder' ) ); ?></th><td><input type="text" name="portals[' + n + '][client_secret]" style="width: 300px;" /></td></tr>' +
+                '<tr class="fields-linkedin" style="display:none;"><th><?php echo esc_js( __( 'Author URN', 'post-forwarder' ) ); ?></th><td><input type="text" name="portals[' + n + '][author_urn]" placeholder="urn:li:person:XXXX or urn:li:organization:XXXX" style="width: 420px;" /></td></tr>';
             var newPortal =
                 '<div class="portal-row" style="border: 1px solid #ddd; padding: 15px; margin-bottom: 10px;" data-type="wordpress">' +
-                '<h4><?php echo esc_js(__('Account #', 'post-forwarder')); ?>' + (n + 1) + '</h4>' +
+                '<h4><?php echo esc_js( __( 'Account #', 'post-forwarder' ) ); ?>' + (n + 1) + '</h4>' +
                 '<table class="form-table">' +
-                '<tr><th><?php echo esc_js(__('Account Type', 'post-forwarder')); ?></th><td>' +
+                '<tr><th><?php echo esc_js( __( 'Account Type', 'post-forwarder' ) ); ?></th><td>' +
                 '<select name="portals[' + n + '][type]" class="portal-type-select">' +
-                '<option value="wordpress"><?php echo esc_js(__('WordPress Portal', 'post-forwarder')); ?></option>' +
-                '<option value="linkedin"><?php echo esc_js(__('LinkedIn Account', 'post-forwarder')); ?></option>' +
+                '<option value="wordpress"><?php echo esc_js( __( 'WordPress Portal', 'post-forwarder' ) ); ?></option>' +
+                '<option value="linkedin"><?php echo esc_js( __( 'LinkedIn Account', 'post-forwarder' ) ); ?></option>' +
                 '</select></td></tr>' +
-                '<tr><th><?php echo esc_js(__('Account Key', 'post-forwarder')); ?></th><td><input type="text" name="portals[' + n + '][key]" placeholder="<?php echo esc_js(__('e.g., portal1', 'post-forwarder')); ?>" style="width: 200px;" /></td></tr>' +
-                '<tr><th><?php echo esc_js(__('Account Name', 'post-forwarder')); ?></th><td><input type="text" name="portals[' + n + '][name]" placeholder="<?php echo esc_js(__('e.g., Example Portal', 'post-forwarder')); ?>" style="width: 300px;" /></td></tr>' +
-                '<tr class="fields-wordpress"><th><?php echo esc_js(__('URL', 'post-forwarder')); ?></th><td><input type="url" name="portals[' + n + '][url]" placeholder="https://example.com" style="width: 400px;" /></td></tr>' +
-                '<tr class="fields-wordpress"><th><?php echo esc_js(__('User ID', 'post-forwarder')); ?></th><td><input type="text" name="portals[' + n + '][user]" placeholder="1728" style="width: 100px;" /></td></tr>' +
-                '<tr class="fields-wordpress"><th><?php echo esc_js(__('App Password', 'post-forwarder')); ?></th><td><input type="text" name="portals[' + n + '][password]" placeholder="xxxx-xxxx-xxxx-xxxx" style="width: 300px;" /></td></tr>' +
-                '<tr class="fields-linkedin" style="display:none;"><th><?php echo esc_js(__('Client ID', 'post-forwarder')); ?></th><td><input type="text" name="portals[' + n + '][client_id]" style="width: 300px;" /></td></tr>' +
-                '<tr class="fields-linkedin" style="display:none;"><th><?php echo esc_js(__('Client Secret', 'post-forwarder')); ?></th><td><input type="text" name="portals[' + n + '][client_secret]" style="width: 300px;" /></td></tr>' +
-                '<tr class="fields-linkedin" style="display:none;"><th><?php echo esc_js(__('Author URN', 'post-forwarder')); ?></th><td><input type="text" name="portals[' + n + '][author_urn]" placeholder="urn:li:person:XXXX or urn:li:organization:XXXX" style="width: 420px;" /></td></tr>' +
-                '<tr class="fields-linkedin" style="display:none;"><th><?php echo esc_js(__('Connection Status', 'post-forwarder')); ?></th><td><span style="color:#666;"><?php echo esc_js(__('Save the account first, then click Connect to LinkedIn.', 'post-forwarder')); ?></span></td></tr>' +
+                '<tr><th><?php echo esc_js( __( 'Account Key', 'post-forwarder' ) ); ?></th><td><input type="text" name="portals[' + n + '][key]" placeholder="<?php echo esc_js( __( 'e.g., portal1', 'post-forwarder' ) ); ?>" style="width: 200px;" /></td></tr>' +
+                '<tr><th><?php echo esc_js( __( 'Account Name', 'post-forwarder' ) ); ?></th><td><input type="text" name="portals[' + n + '][name]" placeholder="<?php echo esc_js( __( 'e.g., My LinkedIn', 'post-forwarder' ) ); ?>" style="width: 300px;" /></td></tr>' +
+                '<tr class="fields-wordpress"><th><?php echo esc_js( __( 'URL', 'post-forwarder' ) ); ?></th><td><input type="url" name="portals[' + n + '][url]" placeholder="https://example.com" style="width: 400px;" /></td></tr>' +
+                '<tr class="fields-wordpress"><th><?php echo esc_js( __( 'User ID', 'post-forwarder' ) ); ?></th><td><input type="text" name="portals[' + n + '][user]" placeholder="1728" style="width: 100px;" /></td></tr>' +
+                '<tr class="fields-wordpress"><th><?php echo esc_js( __( 'App Password', 'post-forwarder' ) ); ?></th><td><input type="text" name="portals[' + n + '][password]" placeholder="xxxx-xxxx-xxxx-xxxx" style="width: 300px;" /></td></tr>' +
+                liCredFields +
+                '<tr class="fields-linkedin" style="display:none;"><th><?php echo esc_js( __( 'Connection Status', 'post-forwarder' ) ); ?></th><td><span style="color:#666;"><?php echo esc_js( __( 'Save the account first, then click Connect with LinkedIn.', 'post-forwarder' ) ); ?></span></td></tr>' +
                 '</table>' +
-                '<button type="button" class="button test-connection" style="margin-right: 8px;"><?php echo esc_js(__('Test Connection', 'post-forwarder')); ?></button>' +
+                '<button type="button" class="button test-connection" style="margin-right: 8px;"><?php echo esc_js( __( 'Test Connection', 'post-forwarder' ) ); ?></button>' +
                 '<span class="connection-result" style="font-weight: 600;"></span>' +
-                '<button type="button" class="button remove-portal" style="float: right;"><?php echo esc_js(__('Remove Account', 'post-forwarder')); ?></button>' +
+                '<button type="button" class="button remove-portal" style="float: right;"><?php echo esc_js( __( 'Remove Account', 'post-forwarder' ) ); ?></button>' +
                 '</div>';
 
             $('#portals-container').append(newPortal);
@@ -670,8 +861,15 @@ function post_forwarder_forward_to_linkedin($post, $mapping) {
     if (isset($mapping['token_expires']) && $mapping['token_expires'] <= time()) {
         return false; // Token expired
     }
-    $author_urn = isset($mapping['author_urn']) ? trim($mapping['author_urn']) : '';
-    if (empty($author_urn)) {
+    $author_urn = isset( $mapping['author_urn'] ) ? trim( $mapping['author_urn'] ) : '';
+
+    // Fall back to the auto-fetched person URN when no explicit author is configured.
+    if ( empty( $author_urn ) && ! empty( $mapping['person_urn'] ) ) {
+        $author_urn = $mapping['person_urn'];
+    }
+
+    if ( empty( $author_urn ) ) {
+        post_forwarder_log_error( 'LinkedIn post skipped: no author URN configured.' );
         return false;
     }
 
@@ -680,7 +878,7 @@ function post_forwarder_forward_to_linkedin($post, $mapping) {
         ? $post->post_excerpt
         : wp_trim_words(wp_strip_all_tags($post->post_content), 60);
 
-    $post_url = get_permalink($post->ID);
+    $post_url = get_permalink( $post->ID );
 
     $body = array(
         'author'     => $author_urn,
@@ -691,34 +889,55 @@ function post_forwarder_forward_to_linkedin($post, $mapping) {
             'targetEntities'                 => array(),
             'thirdPartyDistributionChannels' => array(),
         ),
-        'content' => array(
+        'lifecycleState'            => 'PUBLISHED',
+        'isReshareDisabledByAuthor' => false,
+    );
+
+    // Only attach the article card when the URL is publicly reachable.
+    // LinkedIn's servers must be able to crawl the URL — local/dev URLs will cause a 424 error.
+    $parsed_host = wp_parse_url( $post_url, PHP_URL_HOST );
+    $is_public   = $parsed_host && ! in_array( $parsed_host, array( 'localhost', '127.0.0.1', '::1' ), true )
+        && ! preg_match( '/\.(local|test|ddev\.site|lndo\.site|localhost)$/', $parsed_host );
+
+    if ( $is_public ) {
+        $body['content'] = array(
             'article' => array(
                 'source'      => $post_url,
                 'title'       => $post->post_title,
                 'description' => $commentary,
             ),
-        ),
-        'lifecycleState'            => 'PUBLISHED',
-        'isReshareDisabledByAuthor' => false,
-    );
+        );
+    } else {
+        // Append the URL to the commentary so it's still visible.
+        $body['commentary'] .= "\n\n" . $post_url;
+    }
 
     $response = wp_remote_post('https://api.linkedin.com/rest/posts', array(
         'headers' => array(
             'Authorization'             => 'Bearer ' . $mapping['access_token'],
             'Content-Type'              => 'application/json',
             'X-Restli-Protocol-Version' => '2.0.0',
-            'LinkedIn-Version'          => '202504',
+            'LinkedIn-Version'          => '202503',
         ),
         'body'    => wp_json_encode($body),
         'timeout' => 30,
     ));
 
-    if (is_wp_error($response)) {
+    if ( is_wp_error( $response ) ) {
+        post_forwarder_log_error( 'LinkedIn post failed (WP_Error): ' . $response->get_error_message() );
         return false;
     }
 
-    $code = wp_remote_retrieve_response_code($response);
-    return ($code >= 200 && $code < 300);
+    $code      = wp_remote_retrieve_response_code( $response );
+    $success   = ( $code >= 200 && $code < 300 );
+
+    if ( ! $success ) {
+        post_forwarder_log_error(
+            'LinkedIn post failed (HTTP ' . $code . '): ' . wp_remote_retrieve_body( $response )
+        );
+    }
+
+    return $success;
 }
 
 // Helper function to upload and set featured image
