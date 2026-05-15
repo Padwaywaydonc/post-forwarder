@@ -248,7 +248,7 @@ add_action('admin_init', function () {
                 continue;
             }
             $key           = sanitize_key( $portal['key'] );
-            $allowed_types = array( 'linkedin', 'x', 'wordpress' );
+            $allowed_types = array( 'linkedin', 'x', 'wordpress', 'meta' );
             $type          = ( isset( $portal['type'] ) && in_array( $portal['type'], $allowed_types, true ) ) ? $portal['type'] : 'wordpress';
 
             if ( $type === 'linkedin' ) {
