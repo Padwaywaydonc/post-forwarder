@@ -937,6 +937,147 @@ function post_forwarding_settings_page() {
             . '</p></div>';
     }
 
+    // Meta (Facebook + Instagram) OAuth callback.
+    $meta_auth_notice = '';
+
+    if ( isset( $_GET['meta_oauth_callback'] ) ) {
+        $meta_code = isset( $_GET['code'] )  ? sanitize_text_field( wp_unslash( $_GET['code'] ) )  : '';
+        $meta_state = isset( $_GET['state'] ) ? sanitize_text_field( wp_unslash( $_GET['state'] ) ) : '';
+        $state_parts = explode( '|', $meta_state );
+
+        if ( count( $state_parts ) !== 2 ) {
+            $meta_auth_notice = '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'Meta connection failed: invalid state.', 'post-forwarder' ) . '</p></div>';
+        } else {
+            $meta_portal_key = sanitize_key( $state_parts[0] );
+            $meta_nonce_val  = $state_parts[1];
+
+            if ( ! wp_verify_nonce( $meta_nonce_val, 'meta_auth_' . $meta_portal_key ) ) {
+                $meta_auth_notice = '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'Meta connection failed: security check failed.', 'post-forwarder' ) . '</p></div>';
+            } elseif ( ! $meta_code ) {
+                $meta_error = isset( $_GET['error_description'] ) ? sanitize_text_field( wp_unslash( $_GET['error_description'] ) ) : 'access denied';
+                $meta_auth_notice = '<div class="notice notice-warning is-dismissible"><p>' . esc_html( sprintf( __( 'Meta connection cancelled: %s', 'post-forwarder' ), $meta_error ) ) . '</p></div>';
+            } else {
+                $meta_cb_opts = get_option( 'post_forwarding_options', array() );
+                if ( is_string( $meta_cb_opts ) ) { $meta_cb_opts = json_decode( $meta_cb_opts, true ); }
+                if ( ! is_array( $meta_cb_opts ) ) { $meta_cb_opts = array(); }
+                $meta_cb_maps = isset( $meta_cb_opts['mappings'] ) ? $meta_cb_opts['mappings'] : array();
+                if ( ! is_array( $meta_cb_maps ) ) {
+                    $meta_cb_maps = json_decode( is_string( $meta_cb_maps ) ? $meta_cb_maps : '{}', true );
+                    if ( ! is_array( $meta_cb_maps ) ) { $meta_cb_maps = array(); }
+                }
+
+                if ( ! isset( $meta_cb_maps[ $meta_portal_key ]['type'] ) || 'meta' !== $meta_cb_maps[ $meta_portal_key ]['type'] ) {
+                    $meta_auth_notice = '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'Meta connection failed: portal not found.', 'post-forwarder' ) . '</p></div>';
+                } else {
+                    $meta_app_id     = $meta_cb_maps[ $meta_portal_key ]['app_id'];
+                    $meta_app_secret = $meta_cb_maps[ $meta_portal_key ]['app_secret'];
+                    $meta_callback_url = admin_url( 'options-general.php?page=post-forwarding&meta_oauth_callback=1' );
+
+                    // Exchange code for short-lived user token.
+                    $meta_token_resp = wp_remote_get( 'https://graph.facebook.com/v21.0/oauth/access_token?' . http_build_query( array(
+                        'client_id'     => $meta_app_id,
+                        'client_secret' => $meta_app_secret,
+                        'redirect_uri'  => $meta_callback_url,
+                        'code'          => $meta_code,
+                    ) ), array( 'timeout' => 20 ) );
+
+                    if ( is_wp_error( $meta_token_resp ) || 200 !== wp_remote_retrieve_response_code( $meta_token_resp ) ) {
+                        $meta_err_body = is_wp_error( $meta_token_resp ) ? $meta_token_resp->get_error_message() : wp_remote_retrieve_body( $meta_token_resp );
+                        $meta_err_data = json_decode( $meta_err_body, true );
+                        $meta_err_msg  = ( is_array( $meta_err_data ) && ! empty( $meta_err_data['error']['message'] ) ) ? $meta_err_data['error']['message'] : $meta_err_body;
+                        $meta_auth_notice = '<div class="notice notice-error is-dismissible"><p>' . esc_html( sprintf( __( 'Meta connection failed: %s', 'post-forwarder' ), $meta_err_msg ) ) . '</p></div>';
+                    } else {
+                        $meta_short_token = json_decode( wp_remote_retrieve_body( $meta_token_resp ), true )['access_token'] ?? '';
+
+                        // Exchange for long-lived token (~60 days).
+                        $meta_ll_resp = wp_remote_get( 'https://graph.facebook.com/v21.0/oauth/access_token?' . http_build_query( array(
+                            'grant_type'        => 'fb_exchange_token',
+                            'client_id'         => $meta_app_id,
+                            'client_secret'     => $meta_app_secret,
+                            'fb_exchange_token' => $meta_short_token,
+                        ) ), array( 'timeout' => 20 ) );
+                        $meta_long_token = $meta_short_token;
+                        if ( ! is_wp_error( $meta_ll_resp ) && 200 === wp_remote_retrieve_response_code( $meta_ll_resp ) ) {
+                            $meta_long_token = json_decode( wp_remote_retrieve_body( $meta_ll_resp ), true )['access_token'] ?? $meta_short_token;
+                        }
+
+                        // Fetch managed pages + their Instagram Business Accounts.
+                        $meta_pages_resp = wp_remote_get( 'https://graph.facebook.com/v21.0/me/accounts?' . http_build_query( array(
+                            'access_token' => $meta_long_token,
+                            'fields'       => 'id,name,access_token,instagram_business_account',
+                        ) ), array( 'timeout' => 20 ) );
+
+                        if ( is_wp_error( $meta_pages_resp ) || 200 !== wp_remote_retrieve_response_code( $meta_pages_resp ) ) {
+                            $meta_auth_notice = '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'Meta connection failed: could not fetch Facebook Pages. Make sure the app has pages_show_list permission.', 'post-forwarder' ) . '</p></div>';
+                        } else {
+                            $meta_pages = json_decode( wp_remote_retrieve_body( $meta_pages_resp ), true )['data'] ?? array();
+
+                            if ( empty( $meta_pages ) ) {
+                                $meta_auth_notice = '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'Meta connection failed: no Facebook Pages found. Your account must manage at least one Page.', 'post-forwarder' ) . '</p></div>';
+                            } elseif ( count( $meta_pages ) === 1 ) {
+                                $meta_page = $meta_pages[0];
+                                $meta_cb_maps[ $meta_portal_key ]['access_token']          = $meta_page['access_token'];
+                                $meta_cb_maps[ $meta_portal_key ]['page_id']               = $meta_page['id'];
+                                $meta_cb_maps[ $meta_portal_key ]['page_name']             = $meta_page['name'];
+                                $meta_cb_maps[ $meta_portal_key ]['instagram_account_id']  = ! empty( $meta_page['instagram_business_account']['id'] ) ? $meta_page['instagram_business_account']['id'] : '';
+                                $meta_cb_maps[ $meta_portal_key ]['meta_auth_mode']        = 'button';
+                                unset( $meta_cb_maps[ $meta_portal_key ]['pending_pages'] );
+                                $meta_cb_opts['mappings'] = wp_json_encode( $meta_cb_maps );
+                                update_option( 'post_forwarding_options', $meta_cb_opts );
+                                $ig_suffix = ! empty( $meta_page['instagram_business_account']['id'] )
+                                    ? ' ' . esc_html__( 'Instagram Business account also linked.', 'post-forwarder' )
+                                    : ' ' . esc_html__( 'No Instagram Business account found on this Page.', 'post-forwarder' );
+                                $meta_auth_notice = '<div class="notice notice-success is-dismissible"><p>'
+                                    . esc_html( sprintf( __( 'Connected to Facebook Page "%s".', 'post-forwarder' ), $meta_page['name'] ) )
+                                    . $ig_suffix . '</p></div>';
+                            } else {
+                                // Multiple pages — store list, let user pick.
+                                $meta_cb_maps[ $meta_portal_key ]['pending_pages'] = $meta_pages;
+                                $meta_cb_opts['mappings'] = wp_json_encode( $meta_cb_maps );
+                                update_option( 'post_forwarding_options', $meta_cb_opts );
+                                $meta_auth_notice = 'page_select:' . $meta_portal_key;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Meta page selection form submission.
+    if ( isset( $_POST['meta_select_page'], $_POST['meta_select_portal_key'] ) && check_admin_referer( 'meta_page_select' ) ) {
+        $sel_key     = sanitize_key( wp_unslash( $_POST['meta_select_portal_key'] ) );
+        $sel_page_id = sanitize_text_field( wp_unslash( $_POST['meta_select_page'] ) );
+        $sel_opts    = get_option( 'post_forwarding_options', array() );
+        if ( is_string( $sel_opts ) ) { $sel_opts = json_decode( $sel_opts, true ); }
+        if ( ! is_array( $sel_opts ) ) { $sel_opts = array(); }
+        $sel_maps = isset( $sel_opts['mappings'] ) ? $sel_opts['mappings'] : array();
+        if ( ! is_array( $sel_maps ) ) { $sel_maps = json_decode( is_string( $sel_maps ) ? $sel_maps : '{}', true ); }
+        if ( ! is_array( $sel_maps ) ) { $sel_maps = array(); }
+
+        if ( isset( $sel_maps[ $sel_key ]['pending_pages'] ) && is_array( $sel_maps[ $sel_key ]['pending_pages'] ) ) {
+            foreach ( $sel_maps[ $sel_key ]['pending_pages'] as $pg ) {
+                if ( (string) $pg['id'] === $sel_page_id ) {
+                    $sel_maps[ $sel_key ]['access_token']         = $pg['access_token'];
+                    $sel_maps[ $sel_key ]['page_id']              = $pg['id'];
+                    $sel_maps[ $sel_key ]['page_name']            = $pg['name'];
+                    $sel_maps[ $sel_key ]['instagram_account_id'] = ! empty( $pg['instagram_business_account']['id'] ) ? $pg['instagram_business_account']['id'] : '';
+                    $sel_maps[ $sel_key ]['meta_auth_mode']       = 'button';
+                    unset( $sel_maps[ $sel_key ]['pending_pages'] );
+                    $sel_opts['mappings'] = wp_json_encode( $sel_maps );
+                    update_option( 'post_forwarding_options', $sel_opts );
+                    $ig_suffix = ! empty( $sel_maps[ $sel_key ]['instagram_account_id'] )
+                        ? ' ' . esc_html__( 'Instagram also linked.', 'post-forwarder' )
+                        : '';
+                    $meta_auth_notice = '<div class="notice notice-success is-dismissible"><p>'
+                        . esc_html( sprintf( __( 'Connected to Facebook Page "%s".', 'post-forwarder' ), $pg['name'] ) )
+                        . $ig_suffix . '</p></div>';
+                    break;
+                }
+            }
+        }
+    }
+
     // Handle LinkedIn direct OAuth callback (non-relay mode).
     if ( '' === $linkedin_oauth_notice && isset( $_GET['linkedin_oauth_callback'] ) ) {
         if ( isset( $_GET['error'] ) || isset( $_GET['error_description'] ) ) {
