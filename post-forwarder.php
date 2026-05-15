@@ -388,6 +388,26 @@ add_action('admin_init', function () {
         }
     }
 
+    // Save & Connect — Meta (Facebook + Instagram).
+    if ( ! empty( $_POST['pending_meta_connect'] ) ) {
+        $meta_connect_key = sanitize_key( wp_unslash( $_POST['pending_meta_connect'] ) );
+        if ( isset( $portals[ $meta_connect_key ] ) && 'meta' === $portals[ $meta_connect_key ]['type'] ) {
+            $app_id     = $portals[ $meta_connect_key ]['app_id'];
+            $app_secret = $portals[ $meta_connect_key ]['app_secret'];
+            if ( $app_id && $app_secret ) {
+                $nonce        = wp_create_nonce( 'meta_auth_' . $meta_connect_key );
+                $callback_url = admin_url( 'options-general.php?page=post-forwarding&meta_oauth_callback=1' );
+                wp_redirect( 'https://www.facebook.com/v21.0/dialog/oauth?' . http_build_query( array(
+                    'client_id'    => $app_id,
+                    'redirect_uri' => $callback_url,
+                    'scope'        => 'pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish',
+                    'state'        => $meta_connect_key . '|' . $nonce,
+                ) ) );
+                exit;
+            }
+        }
+    }
+
     // Normal save — redirect back with success flag (PRG).
     wp_redirect( $settings_url . '&portals_saved=1' );
     exit;
