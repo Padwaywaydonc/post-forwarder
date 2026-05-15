@@ -393,6 +393,12 @@ function post_forwarding_sanitize_options($input) {
         ? 'publish'
         : 'draft';
 
+    // Preserve mappings from input when provided — OAuth callbacks and the portals form pass this.
+    // When the global settings form submits (no mappings key), leave existing mappings untouched.
+    if ( isset( $input['mappings'] ) && $input['mappings'] !== '' ) {
+        $sanitized['mappings'] = $input['mappings'];
+    }
+
     return $sanitized;
 }
 
@@ -430,34 +436,36 @@ add_action( 'admin_enqueue_scripts', function ( $hook ) {
     wp_add_inline_script( 'wp-data', '
 (function() {
     if (typeof wp === "undefined" || !wp.data || !wp.data.subscribe) { return; }
-    var postId   = ' . (int) $post_id . ';
-    var endpoint = ' . wp_json_encode( $results_url ) . ';
+    var restBase = ' . wp_json_encode( rest_url( 'post-forwarder/v1/results/' ) ) . ';
     var nonce    = ' . wp_json_encode( $rest_nonce ) . ';
-    if (!postId) { return; }
     var wasSaving = false;
-    var unsub = wp.data.subscribe(function() {
+    wp.data.subscribe(function() {
         var editor = wp.data.select("core/editor");
         if (!editor) { return; }
         var nowSaving = editor.isSavingPost();
         if (!nowSaving && wasSaving) {
             wasSaving = false;
+            var post   = editor.getCurrentPost();
+            var postId = post && post.id ? post.id : 0;
+            if (!postId) { return; }
             setTimeout(function() {
-                fetch(endpoint, { headers: { "X-WP-Nonce": nonce } })
+                fetch(restBase + postId, { headers: { "X-WP-Nonce": nonce } })
                     .then(function(r){ return r.json(); })
                     .then(function(data) {
                         if (!data || !data.results || !data.results.length) { return; }
                         var notices = wp.data.dispatch("core/notices");
                         if (!notices) { return; }
-                        data.results.forEach(function(r) {
-                            var icon = r.success ? "✓" : "✗";
+                        data.results.forEach(function(r, i) {
+                            var icon  = r.success ? "✓" : "✗";
+                            var badge = r.type === "linkedin" ? " [LI]" : r.type === "x" ? " [X]" : " [WP]";
                             notices.createNotice(
                                 r.success ? "success" : "error",
-                                "Post Forwarder — " + icon + " " + r.name + ": " + r.message,
-                                { id: "pf-result-" + r.type, isDismissible: true }
+                                "Post Forwarder" + badge + " " + icon + " " + r.name + ": " + r.message,
+                                { id: "pf-result-" + i, isDismissible: true, type: "snackbar" }
                             );
                         });
-                    });
-            }, 500);
+                    }).catch(function(){});
+            }, 800);
         } else if (nowSaving) {
             wasSaving = true;
         }
@@ -728,7 +736,6 @@ function post_forwarding_settings_page() {
     // Handle X (Twitter) relay callback.
     $x_oauth_notice = '';
     if ( isset( $_GET['x_relay_callback'] ) ) {
-        post_forwarder_log_error( 'X relay callback received. GET params: ' . wp_json_encode( array_map( 'sanitize_text_field', array_map( 'wp_unslash', $_GET ) ) ) );
         $x_relay_url       = post_forwarder_relay_url();
         $x_relay_token_key = isset( $_GET['relay_token_key'] ) ? sanitize_text_field( wp_unslash( $_GET['relay_token_key'] ) ) : '';
         $x_relay_error     = isset( $_GET['relay_error'] )     ? sanitize_text_field( wp_unslash( $_GET['relay_error'] ) )     : '';
@@ -798,7 +805,10 @@ function post_forwarding_settings_page() {
                         } else {
                             unset( $x_relay_mappings[ $x_portal_key ]['last_error'] );
                             $x_relay_mappings[ $x_portal_key ]['access_token']  = $x_payload['access_token'];
-                            $x_relay_mappings[ $x_portal_key ]['token_expires'] = time() + (int) ( $x_payload['expires_in'] ?? 7200 );
+                            $expires_in = isset( $x_payload['expires_in'] ) && $x_payload['expires_in'] > 0
+                                ? (int) $x_payload['expires_in']
+                                : 7200;
+                            $x_relay_mappings[ $x_portal_key ]['token_expires'] = time() + $expires_in;
 
                             if ( ! empty( $x_payload['refresh_token'] ) ) {
                                 $x_relay_mappings[ $x_portal_key ]['refresh_token']         = $x_payload['refresh_token'];
@@ -1054,6 +1064,13 @@ function post_forwarding_settings_page() {
     // Show success notice after PRG redirect.
     if ( isset( $_GET['portals_saved'] ) ) {
         echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Accounts saved successfully!', 'post-forwarder' ) . '</p></div>';
+    }
+
+    // Re-read options here so any OAuth callbacks that ran above (and updated the DB) are reflected.
+    $options = get_option( 'post_forwarding_options', array() );
+    if ( is_string( $options ) ) {
+        $options = json_decode( $options, true );
+        if ( ! is_array( $options ) ) { $options = array(); }
     }
 
     // Parse existing mappings.
@@ -1804,6 +1821,54 @@ function post_forwarder_forward_to_linkedin($post, $mapping) {
         'isReshareDisabledByAuthor' => false,
     );
 
+    // Upload featured image to LinkedIn (3-step: initialize → PUT binary → use URN in post).
+    $li_image_urn      = null;
+    $featured_image_id = get_post_thumbnail_id( $post->ID );
+    if ( $featured_image_id ) {
+        $featured_image_src = wp_get_attachment_image_src( $featured_image_id, 'full' );
+        $featured_image_url = $featured_image_src ? $featured_image_src[0] : null;
+
+        if ( $featured_image_url ) {
+            $li_headers = array(
+                'Authorization'             => 'Bearer ' . $mapping['access_token'],
+                'Content-Type'              => 'application/json',
+                'X-Restli-Protocol-Version' => '2.0.0',
+                'LinkedIn-Version'          => '202503',
+            );
+
+            $init_resp = wp_remote_post(
+                'https://api.linkedin.com/rest/images?action=initializeUpload',
+                array(
+                    'headers' => $li_headers,
+                    'body'    => wp_json_encode( array(
+                        'initializeUploadRequest' => array( 'owner' => $author_urn ),
+                    ) ),
+                    'timeout' => 20,
+                )
+            );
+
+            if ( ! is_wp_error( $init_resp ) && 200 === wp_remote_retrieve_response_code( $init_resp ) ) {
+                $init_data = json_decode( wp_remote_retrieve_body( $init_resp ), true );
+                if ( ! empty( $init_data['value']['uploadUrl'] ) && ! empty( $init_data['value']['image'] ) ) {
+                    $img_resp = wp_remote_get( $featured_image_url, array( 'timeout' => 30 ) );
+                    if ( ! is_wp_error( $img_resp ) ) {
+                        $img_content_type = wp_remote_retrieve_header( $img_resp, 'content-type' ) ?: 'image/jpeg';
+                        wp_remote_request( $init_data['value']['uploadUrl'], array(
+                            'method'  => 'PUT',
+                            'headers' => array(
+                                'Authorization' => 'Bearer ' . $mapping['access_token'],
+                                'Content-Type'  => $img_content_type,
+                            ),
+                            'body'    => wp_remote_retrieve_body( $img_resp ),
+                            'timeout' => 60,
+                        ) );
+                        $li_image_urn = $init_data['value']['image'];
+                    }
+                }
+            }
+        }
+    }
+
     // Only attach the article card when the URL is publicly reachable.
     // LinkedIn's servers must be able to crawl the URL — local/dev URLs will cause a 424 error.
     $parsed_host = wp_parse_url( $post_url, PHP_URL_HOST );
@@ -1811,48 +1876,67 @@ function post_forwarder_forward_to_linkedin($post, $mapping) {
         && ! preg_match( '/\.(local|test|ddev\.site|lndo\.site|localhost)$/', $parsed_host );
 
     if ( $is_public ) {
+        $article = array(
+            'source'      => $post_url,
+            'title'       => $post->post_title,
+            'description' => $commentary,
+        );
+        if ( $li_image_urn ) {
+            $article['thumbnail'] = $li_image_urn;
+        }
+        $body['content'] = array( 'article' => $article );
+    } elseif ( $li_image_urn ) {
+        // Local site with an image: use media content type so the image shows.
         $body['content'] = array(
-            'article' => array(
-                'source'      => $post_url,
-                'title'       => $post->post_title,
-                'description' => $commentary,
+            'media' => array(
+                'id'      => $li_image_urn,
+                'altText' => $post->post_title,
             ),
         );
+        $body['commentary'] .= "\n\n" . $post_url;
     } else {
         // Append the URL to the commentary so it's still visible.
         $body['commentary'] .= "\n\n" . $post_url;
     }
 
-    $response = wp_remote_post('https://api.linkedin.com/rest/posts', array(
+    $response = wp_remote_post( 'https://api.linkedin.com/rest/posts', array(
         'headers' => array(
             'Authorization'             => 'Bearer ' . $mapping['access_token'],
             'Content-Type'              => 'application/json',
             'X-Restli-Protocol-Version' => '2.0.0',
             'LinkedIn-Version'          => '202503',
         ),
-        'body'    => wp_json_encode($body),
+        'body'    => wp_json_encode( $body ),
         'timeout' => 30,
-    ));
+    ) );
 
     if ( is_wp_error( $response ) ) {
         $msg = $response->get_error_message();
         post_forwarder_log_error( 'LinkedIn post failed (WP_Error): ' . $msg );
-        return array('success' => false, 'message' => $msg);
+        return array( 'success' => false, 'message' => $msg );
     }
 
-    $code      = wp_remote_retrieve_response_code( $response );
-    $body      = wp_remote_retrieve_body( $response );
+    $code     = wp_remote_retrieve_response_code( $response );
+    $raw_body = wp_remote_retrieve_body( $response );
 
     if ( $code >= 200 && $code < 300 ) {
-        return array('success' => true, 'message' => __('Posted successfully.', 'post-forwarder'));
+        $post_urn = wp_remote_retrieve_header( $response, 'x-restli-id' );
+        if ( ! $post_urn ) {
+            $resp_data = json_decode( $raw_body, true );
+            $post_urn  = is_array( $resp_data ) && ! empty( $resp_data['id'] ) ? $resp_data['id'] : '';
+        }
+        if ( $post_urn ) {
+            post_forwarder_log_error( 'LinkedIn post created: ' . $post_urn );
+        }
+        return array( 'success' => true, 'message' => __( 'Posted successfully.', 'post-forwarder' ), 'post_urn' => $post_urn );
     }
 
-    post_forwarder_log_error( 'LinkedIn post failed (HTTP ' . $code . '): ' . $body );
-    $err_data = json_decode( $body, true );
+    post_forwarder_log_error( 'LinkedIn post failed (HTTP ' . $code . '): ' . $raw_body );
+    $err_data = json_decode( $raw_body, true );
     $err_msg  = ( is_array( $err_data ) && ! empty( $err_data['message'] ) )
         ? $err_data['message']
         : 'HTTP ' . $code;
-    return array('success' => false, 'message' => $err_msg);
+    return array( 'success' => false, 'message' => $err_msg );
 }
 
 // X (Twitter) post forwarding
@@ -2279,10 +2363,11 @@ function post_forward_post($post_id) {
         if ($target_type === 'linkedin') {
             $result = post_forwarder_forward_to_linkedin($post, $target);
             $portal_results[$xproduct] = array(
-                'name'    => $portal_name,
-                'type'    => 'linkedin',
-                'success' => $result['success'],
-                'message' => $result['message'],
+                'name'     => $portal_name,
+                'type'     => 'linkedin',
+                'success'  => $result['success'],
+                'message'  => $result['message'],
+                'post_urn' => isset( $result['post_urn'] ) ? $result['post_urn'] : '',
             );
             if ($result['success']) {
                 $forwarding_successful = true;
