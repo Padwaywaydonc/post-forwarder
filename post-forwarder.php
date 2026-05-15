@@ -19,6 +19,106 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Review notice — shown immediately on relevant screens, dismissed permanently per-user.
+add_action( 'admin_notices', 'post_forwarder_review_notice' );
+add_action( 'wp_ajax_post_forwarder_dismiss_review', 'post_forwarder_dismiss_review' );
+
+function post_forwarder_review_notice() {
+    // Show to anyone who can edit posts (covers editors, authors) or manage options.
+    if ( ! current_user_can( 'edit_posts' ) && ! current_user_can( 'manage_options' ) ) {
+        return;
+    }
+
+    // Only on the post editor and the plugin settings page.
+    $screen = get_current_screen();
+    if ( ! $screen ) {
+        return;
+    }
+    $is_post_edit = in_array( $screen->base, array( 'post', 'edit' ), true );
+    $is_settings  = ( 'settings_page_post-forwarding' === $screen->id );
+    if ( ! $is_post_edit && ! $is_settings ) {
+        return;
+    }
+
+    // Once dismissed, never show again for this user.
+    if ( get_user_meta( get_current_user_id(), 'post_forwarder_review_dismissed', true ) ) {
+        return;
+    }
+    ?>
+    <div class="notice notice-info is-dismissible" id="post-forwarder-review-notice">
+        <p>
+            <?php esc_html_e( '👋 Enjoying Post Forwarder? It would mean a lot if you left a quick review — it helps others find the plugin.', 'post-forwarder' ); ?>
+            &nbsp;
+            <a href="https://wordpress.org/support/plugin/post-forwarder/reviews/#new-post" target="_blank" rel="noopener noreferrer" class="button button-primary" style="margin-left:8px;"><?php esc_html_e( '⭐ Leave a Review', 'post-forwarder' ); ?></a>
+            <a href="#" class="button" style="margin-left:6px;" id="post-forwarder-dismiss-review"><?php esc_html_e( 'I already did', 'post-forwarder' ); ?></a>
+        </p>
+    </div>
+    <script>
+    jQuery(document).ready(function($){
+        function dismissReview(){
+            $.post(ajaxurl, { action: 'post_forwarder_dismiss_review', nonce: '<?php echo esc_js( wp_create_nonce( 'post_forwarder_dismiss_review' ) ); ?>' });
+            $('#post-forwarder-review-notice').remove();
+        }
+        $('#post-forwarder-dismiss-review').on('click', function(e){ e.preventDefault(); dismissReview(); });
+        $(document).on('click', '#post-forwarder-review-notice .notice-dismiss', function(){ dismissReview(); });
+    });
+    </script>
+    <?php
+}
+
+function post_forwarder_dismiss_review() {
+    check_ajax_referer( 'post_forwarder_dismiss_review', 'nonce' );
+    update_user_meta( get_current_user_id(), 'post_forwarder_review_dismissed', true );
+    wp_die();
+}
+
+// Display per-portal forwarding results on the post edit screen after publishing.
+add_action( 'admin_notices', function () {
+    $screen = get_current_screen();
+    if ( ! $screen || 'post' !== $screen->base ) {
+        return;
+    }
+    $post_id = isset( $_GET['post'] ) ? (int) $_GET['post'] : 0;
+    if ( ! $post_id ) {
+        return;
+    }
+    $key     = 'pf_forward_results_' . get_current_user_id() . '_' . $post_id;
+    $results = get_transient( $key );
+    if ( ! $results || ! is_array( $results ) ) {
+        return;
+    }
+    delete_transient( $key );
+
+    $has_success = false;
+    $has_failure = false;
+    foreach ( $results as $r ) {
+        if ( $r['success'] ) { $has_success = true; } else { $has_failure = true; }
+    }
+    $notice_type = ( $has_failure && ! $has_success ) ? 'error' : ( $has_failure ? 'warning' : 'success' );
+
+    echo '<div class="notice notice-' . esc_attr( $notice_type ) . ' is-dismissible">';
+    echo '<p><strong>' . esc_html__( 'Post Forwarder results:', 'post-forwarder' ) . '</strong></p>';
+    echo '<ul style="margin:2px 0 6px 18px;list-style:disc;">';
+    foreach ( $results as $r ) {
+        $color = $r['success'] ? '#00a32a' : '#cc0000';
+        $icon  = $r['success'] ? '✓' : '✗';
+        $badge = '';
+        if ( isset( $r['type'] ) ) {
+            $badge_colors = array( 'linkedin' => '#0a66c2', 'x' => '#000', 'wordpress' => '#3858e9' );
+            $badge_labels = array( 'linkedin' => 'LI', 'x' => 'X', 'wordpress' => 'WP' );
+            if ( isset( $badge_colors[ $r['type'] ] ) ) {
+                $badge = ' <span style="background:' . esc_attr( $badge_colors[ $r['type'] ] ) . ';color:#fff;font-size:10px;padding:1px 5px;border-radius:3px;">' . esc_html( $badge_labels[ $r['type'] ] ) . '</span>';
+            }
+        }
+        echo '<li>';
+        echo '<span style="color:' . esc_attr( $color ) . ';font-weight:700;">' . esc_html( $icon ) . '</span> ';
+        echo '<strong>' . esc_html( $r['name'] ) . '</strong>' . $badge . ': '; // phpcs:ignore
+        echo esc_html( $r['message'] );
+        echo '</li>';
+    }
+    echo '</ul></div>';
+} );
+
 // Create languages directory if it doesn't exist
 if (!file_exists(plugin_dir_path(__FILE__) . 'languages')) {
     wp_mkdir_p(plugin_dir_path(__FILE__) . 'languages');
@@ -110,31 +210,261 @@ add_action('admin_init', function () {
     ));
 });
 
-// Sanitize options
-function post_forwarding_sanitize_options($input) {
-    $sanitized = array();
-    
-    if (isset($input['enabled'])) {
-        $sanitized['enabled'] = (bool) $input['enabled'];
+// Handle the portals form submission early (admin_init) so wp_redirect() works
+// before any output is sent — standard WordPress PRG pattern.
+add_action('admin_init', function () {
+    if ( ! isset( $_POST['submit_portals'], $_POST['portals_nonce'] ) ) {
+        return;
     }
-    
-    if (isset($input['post_status'])) {
-        $sanitized['post_status'] = in_array($input['post_status'], array('publish', 'draft')) ? $input['post_status'] : 'draft';
+    if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['portals_nonce'] ) ), 'save_portals' ) ) {
+        return;
     }
-    
-    if (isset($input['mappings'])) {
-        // Validate JSON
-        $mappings = json_decode($input['mappings'], true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($mappings)) {
-            $sanitized['mappings'] = wp_json_encode($mappings);
-        } else {
-            add_settings_error('post_forwarding_options', 'invalid_json', __('Invalid JSON format in mappings.', 'post-forwarder'));
-            $sanitized['mappings'] = '{}';
+    if ( ! current_user_can( 'manage_options' ) ) {
+        return;
+    }
+
+    $options = get_option( 'post_forwarding_options', array() );
+    if ( is_string( $options ) ) {
+        $options = json_decode( $options, true );
+        if ( ! is_array( $options ) ) {
+            $options = array();
         }
     }
-    
+
+    $portals = array();
+    $existing_mappings_for_save = isset( $options['mappings'] ) ? $options['mappings'] : array();
+    if ( ! is_array( $existing_mappings_for_save ) ) {
+        $existing_mappings_for_save = json_decode( is_string( $existing_mappings_for_save ) ? $existing_mappings_for_save : '{}', true );
+        if ( ! is_array( $existing_mappings_for_save ) ) {
+            $existing_mappings_for_save = array();
+        }
+    }
+
+    if ( isset( $_POST['portals'] ) && is_array( $_POST['portals'] ) ) {
+        $portals_raw = wp_unslash( $_POST['portals'] );
+
+        foreach ( $portals_raw as $index => $portal ) {
+            if ( ! is_array( $portal ) || empty( $portal['key'] ) || empty( $portal['name'] ) ) {
+                continue;
+            }
+            $key           = sanitize_key( $portal['key'] );
+            $allowed_types = array( 'linkedin', 'x', 'wordpress' );
+            $type          = ( isset( $portal['type'] ) && in_array( $portal['type'], $allowed_types, true ) ) ? $portal['type'] : 'wordpress';
+
+            if ( $type === 'linkedin' ) {
+                $portals[ $key ] = array(
+                    'type'          => 'linkedin',
+                    'name'          => sanitize_text_field( $portal['name'] ),
+                    'client_id'     => sanitize_text_field( isset( $portal['client_id'] )     ? $portal['client_id']     : '' ),
+                    'client_secret' => sanitize_text_field( isset( $portal['client_secret'] ) ? $portal['client_secret'] : '' ),
+                    'author_urn'    => sanitize_text_field( isset( $portal['author_urn'] )    ? $portal['author_urn']    : '' ),
+                );
+                foreach ( array( 'access_token', 'refresh_token', 'token_expires', 'refresh_token_expires', 'person_urn', 'last_error' ) as $token_field ) {
+                    if ( isset( $existing_mappings_for_save[ $key ][ $token_field ] ) ) {
+                        $portals[ $key ][ $token_field ] = $existing_mappings_for_save[ $key ][ $token_field ];
+                    }
+                }
+            } elseif ( $type === 'x' ) {
+                $portals[ $key ] = array(
+                    'type' => 'x',
+                    'name' => sanitize_text_field( $portal['name'] ),
+                );
+                foreach ( array( 'access_token', 'refresh_token', 'token_expires', 'refresh_token_expires', 'x_user_id', 'x_username', 'last_error' ) as $token_field ) {
+                    if ( isset( $existing_mappings_for_save[ $key ][ $token_field ] ) ) {
+                        $portals[ $key ][ $token_field ] = $existing_mappings_for_save[ $key ][ $token_field ];
+                    }
+                }
+            } else {
+                if ( empty( $portal['url'] ) ) {
+                    continue;
+                }
+                $portals[ $key ] = array(
+                    'type'     => 'wordpress',
+                    'name'     => sanitize_text_field( $portal['name'] ),
+                    'url'      => esc_url_raw( $portal['url'] ),
+                    'user'     => sanitize_text_field( isset( $portal['user'] )     ? $portal['user']     : '' ),
+                    'password' => sanitize_text_field( isset( $portal['password'] ) ? $portal['password'] : '' ),
+                );
+                // Preserve button-connected credentials when manual fields are empty (hidden).
+                foreach ( array( 'user', 'password', 'wp_auth_mode', 'wp_site_url', 'last_error' ) as $pf ) {
+                    if ( empty( $portals[ $key ][ $pf ] ) && isset( $existing_mappings_for_save[ $key ][ $pf ] ) ) {
+                        $portals[ $key ][ $pf ] = $existing_mappings_for_save[ $key ][ $pf ];
+                    }
+                }
+            }
+        }
+    }
+
+    $options['mappings'] = wp_json_encode( $portals );
+    update_option( 'post_forwarding_options', $options );
+
+    $settings_url = admin_url( 'options-general.php?page=post-forwarding' );
+
+    // Save & Connect — LinkedIn.
+    if ( ! empty( $_POST['pending_linkedin_connect'] ) ) {
+        $connect_key  = sanitize_key( wp_unslash( $_POST['pending_linkedin_connect'] ) );
+        $relay_target = post_forwarder_relay_url();
+        if ( $relay_target && isset( $portals[ $connect_key ] ) && 'linkedin' === $portals[ $connect_key ]['type'] ) {
+            wp_redirect( $relay_target . '/start?' . http_build_query( array(
+                'return_url' => $settings_url,
+                'portal_key' => $connect_key,
+                'wp_nonce'   => wp_create_nonce( 'linkedin_oauth_' . $connect_key ),
+            ) ) );
+            exit;
+        }
+    }
+
+    // Save & Connect — X.
+    if ( ! empty( $_POST['pending_x_connect'] ) ) {
+        $x_connect_key  = sanitize_key( wp_unslash( $_POST['pending_x_connect'] ) );
+        $x_relay_target = post_forwarder_relay_url();
+        if ( $x_relay_target && isset( $portals[ $x_connect_key ] ) && 'x' === $portals[ $x_connect_key ]['type'] ) {
+            wp_redirect( $x_relay_target . '/x/start?' . http_build_query( array(
+                'return_url' => $settings_url,
+                'portal_key' => $x_connect_key,
+                'wp_nonce'   => wp_create_nonce( 'x_oauth_' . $x_connect_key ),
+            ) ) );
+            exit;
+        }
+    }
+
+    // Save & Connect — WordPress Application Password authorization.
+    if ( ! empty( $_POST['pending_wp_connect'] ) ) {
+        $wp_connect_key = sanitize_key( wp_unslash( $_POST['pending_wp_connect'] ) );
+        if ( isset( $portals[ $wp_connect_key ] ) && 'wordpress' === $portals[ $wp_connect_key ]['type'] ) {
+            $target_url = isset( $portals[ $wp_connect_key ]['url'] ) ? $portals[ $wp_connect_key ]['url'] : '';
+            if ( $target_url ) {
+                $preflight    = wp_remote_get(
+                    rtrim( $target_url, '/' ) . '/wp-json/',
+                    array( 'timeout' => 10, 'redirection' => 5 )
+                );
+                $pf_data      = ! is_wp_error( $preflight ) ? json_decode( wp_remote_retrieve_body( $preflight ), true ) : null;
+                $preflight_ok = ! is_wp_error( $preflight )
+                    && 200 === wp_remote_retrieve_response_code( $preflight )
+                    && is_array( $pf_data )
+                    && isset( $pf_data['namespaces'] );
+
+                if ( ! $preflight_ok ) {
+                    wp_redirect( $settings_url . '&wp_connect_error=preflight_failed&portal_key=' . urlencode( $wp_connect_key ) );
+                    exit;
+                }
+
+                // Use the site URL from the API response — this is where wp-admin actually lives
+                // and may differ from the entered URL when WordPress is installed in a subdirectory.
+                $wp_site_url = ! empty( $pf_data['url'] ) ? rtrim( $pf_data['url'], '/' ) : rtrim( $target_url, '/' );
+
+                $nonce       = wp_create_nonce( 'wp_auth_' . $wp_connect_key );
+                $success_url = add_query_arg( array(
+                    'wordpress_auth_callback' => '1',
+                    'portal_key'              => $wp_connect_key,
+                    'wp_nonce'                => $nonce,
+                ), admin_url( 'options-general.php?page=post-forwarding' ) );
+                $reject_url  = add_query_arg( array(
+                    'wordpress_auth_rejected' => '1',
+                    'portal_key'              => $wp_connect_key,
+                ), admin_url( 'options-general.php?page=post-forwarding' ) );
+
+                wp_redirect( $wp_site_url . '/wp-admin/authorize-application.php?' . http_build_query( array(
+                    'app_name'    => 'Post Forwarder',
+                    'success_url' => $success_url,
+                    'reject_url'  => $reject_url,
+                ) ) );
+                exit;
+            }
+        }
+    }
+
+    // Normal save — redirect back with success flag (PRG).
+    wp_redirect( $settings_url . '&portals_saved=1' );
+    exit;
+});
+
+// Sanitize options
+function post_forwarding_sanitize_options($input) {
+    // Start from existing values so that fields not present in this form (e.g. mappings,
+    // managed by the portals form) are never wiped by saving the global settings form.
+    $existing  = get_option( 'post_forwarding_options', array() );
+    $sanitized = is_array( $existing ) ? $existing : array();
+
+    // Checkbox: must explicitly set false when not in POST (unchecked checkboxes are omitted).
+    $sanitized['enabled'] = ! empty( $input['enabled'] );
+
+    $sanitized['post_status'] = ( isset( $input['post_status'] ) && $input['post_status'] === 'publish' )
+        ? 'publish'
+        : 'draft';
+
     return $sanitized;
 }
+
+// REST endpoint: return (and consume) forwarding results for a post.
+add_action( 'rest_api_init', function () {
+    register_rest_route( 'post-forwarder/v1', '/results/(?P<post_id>\d+)', array(
+        'methods'             => 'GET',
+        'callback'            => function ( WP_REST_Request $request ) {
+            $post_id = (int) $request->get_param( 'post_id' );
+            $key     = 'pf_forward_results_' . get_current_user_id() . '_' . $post_id;
+            $results = get_transient( $key );
+            if ( ! $results || ! is_array( $results ) ) {
+                return rest_ensure_response( array( 'results' => null ) );
+            }
+            delete_transient( $key );
+            return rest_ensure_response( array( 'results' => array_values( $results ) ) );
+        },
+        'permission_callback' => function ( WP_REST_Request $request ) {
+            return current_user_can( 'edit_post', (int) $request->get_param( 'post_id' ) );
+        },
+    ) );
+} );
+
+// Enqueue Gutenberg save-listener on post edit screens.
+add_action( 'admin_enqueue_scripts', function ( $hook ) {
+    if ( ! in_array( $hook, array( 'post.php', 'post-new.php' ), true ) ) {
+        return;
+    }
+    $post_id = isset( $_GET['post'] ) ? (int) $_GET['post'] : 0;
+    if ( ! $post_id && isset( $_POST['post_ID'] ) ) {
+        $post_id = (int) $_POST['post_ID'];
+    }
+    $results_url = rest_url( 'post-forwarder/v1/results/' . $post_id );
+    $rest_nonce  = wp_create_nonce( 'wp_rest' );
+    wp_add_inline_script( 'wp-data', '
+(function() {
+    if (typeof wp === "undefined" || !wp.data || !wp.data.subscribe) { return; }
+    var postId   = ' . (int) $post_id . ';
+    var endpoint = ' . wp_json_encode( $results_url ) . ';
+    var nonce    = ' . wp_json_encode( $rest_nonce ) . ';
+    if (!postId) { return; }
+    var wasSaving = false;
+    var unsub = wp.data.subscribe(function() {
+        var editor = wp.data.select("core/editor");
+        if (!editor) { return; }
+        var nowSaving = editor.isSavingPost();
+        if (!nowSaving && wasSaving) {
+            wasSaving = false;
+            setTimeout(function() {
+                fetch(endpoint, { headers: { "X-WP-Nonce": nonce } })
+                    .then(function(r){ return r.json(); })
+                    .then(function(data) {
+                        if (!data || !data.results || !data.results.length) { return; }
+                        var notices = wp.data.dispatch("core/notices");
+                        if (!notices) { return; }
+                        data.results.forEach(function(r) {
+                            var icon = r.success ? "✓" : "✗";
+                            notices.createNotice(
+                                r.success ? "success" : "error",
+                                "Post Forwarder — " + icon + " " + r.name + ": " + r.message,
+                                { id: "pf-result-" + r.type, isDismissible: true }
+                            );
+                        });
+                    });
+            }, 500);
+        } else if (nowSaving) {
+            wasSaving = true;
+        }
+    });
+})();
+', 'after' );
+} );
 
 // Add meta box to post editor
 add_action('add_meta_boxes', function() {
@@ -177,9 +507,22 @@ function post_forwarding_meta_box_callback($post) {
                 if (!$is_connected) {
                     $display_name .= ' <span style="color:#cc0000;font-size:11px;">' . esc_html__('(not connected)', 'post-forwarder') . '</span>';
                 }
+            } elseif ($account_type === 'x') {
+                $is_connected = !empty($mapping['access_token'])
+                    && (!isset($mapping['token_expires']) || $mapping['token_expires'] > time());
+                $badge        = '<span style="background:#000;color:#fff;font-size:10px;padding:1px 5px;border-radius:3px;margin-left:5px;">X</span>';
+                $display_name = esc_html($portal_name) . $badge;
+                if (!$is_connected) {
+                    $display_name .= ' <span style="color:#cc0000;font-size:11px;">' . esc_html__('(not connected)', 'post-forwarder') . '</span>';
+                }
             } else {
-                $portal_url   = isset($mapping['url']) ? $mapping['url'] : '';
-                $display_name = esc_html($portal_name . ($portal_url ? ' (' . wp_parse_url($portal_url, PHP_URL_HOST) . ')' : ''));
+                $wp_connected = ! empty( $mapping['user'] ) && ! empty( $mapping['password'] );
+                $badge        = '<span style="background:#3858e9;color:#fff;font-size:10px;padding:1px 5px;border-radius:3px;margin-left:5px;">WP</span>';
+                $display_name = esc_html( $portal_name ) . $badge;
+                if ( ! $wp_connected ) {
+                    $display_name .= ' <span style="color:#cc0000;font-size:11px;">' . esc_html__( '(not connected)', 'post-forwarder' ) . '</span>';
+                }
+                $is_connected = $wp_connected;
             }
 
             $is_selected = in_array($product_key, $selected_products);
@@ -195,6 +538,35 @@ function post_forwarding_meta_box_callback($post) {
         echo '<p style="color: #666; font-style: italic;">' . esc_html__('No portals configured', 'post-forwarder') . '</p>';
     }
     
+    // Show forwarding results from the last save (set by post_forward_post via save_post).
+    $pf_results_key = 'pf_forward_results_' . get_current_user_id() . '_' . $post->ID;
+    $pf_results     = get_transient( $pf_results_key );
+    if ( $pf_results && is_array( $pf_results ) ) {
+        delete_transient( $pf_results_key );
+        $all_ok = true;
+        foreach ( $pf_results as $r ) { if ( ! $r['success'] ) { $all_ok = false; break; } }
+        $border = $all_ok ? '#00a32a' : '#cc0000';
+        echo '<div style="margin-top:10px;border-top:1px solid #ddd;padding-top:8px;">';
+        echo '<strong style="font-size:11px;">' . esc_html__( 'Forwarding results:', 'post-forwarder' ) . '</strong>';
+        echo '<ul style="margin:4px 0 0 0;padding:0;list-style:none;">';
+        foreach ( $pf_results as $r ) {
+            $icon  = $r['success'] ? '✓' : '✗';
+            $color = $r['success'] ? '#00a32a' : '#cc0000';
+            $badge_colors = array( 'linkedin' => '#0a66c2', 'x' => '#000', 'wordpress' => '#3858e9' );
+            $badge_labels = array( 'linkedin' => 'LI', 'x' => 'X', 'wordpress' => 'WP' );
+            $badge = '';
+            if ( isset( $r['type'], $badge_colors[ $r['type'] ] ) ) {
+                $badge = '<span style="background:' . esc_attr( $badge_colors[ $r['type'] ] ) . ';color:#fff;font-size:9px;padding:1px 4px;border-radius:2px;margin-left:3px;">' . esc_html( $badge_labels[ $r['type'] ] ) . '</span>';
+            }
+            echo '<li style="font-size:11px;margin:3px 0;display:flex;align-items:center;gap:4px;">';
+            echo '<span style="color:' . esc_attr( $color ) . ';font-weight:700;flex-shrink:0;">' . esc_html( $icon ) . '</span>';
+            echo '<span><strong>' . esc_html( $r['name'] ) . '</strong>' . $badge . ':</span>'; // phpcs:ignore
+            echo '<span style="color:' . esc_attr( $color ) . ';word-break:break-all;">' . esc_html( $r['message'] ) . '</span>';
+            echo '</li>';
+        }
+        echo '</ul></div>';
+    }
+
     echo '<p style="font-size: 11px; color: #666; margin-top: 10px; border-top: 1px solid #ddd; padding-top: 8px;">';
     echo esc_html__('Configure portals in Settings → Post Forwarding', 'post-forwarder');
     echo '</p>';
@@ -351,6 +723,174 @@ function post_forwarding_settings_page() {
                 }
             }
         }
+    }
+
+    // Handle X (Twitter) relay callback.
+    $x_oauth_notice = '';
+    if ( isset( $_GET['x_relay_callback'] ) ) {
+        post_forwarder_log_error( 'X relay callback received. GET params: ' . wp_json_encode( array_map( 'sanitize_text_field', array_map( 'wp_unslash', $_GET ) ) ) );
+        $x_relay_url       = post_forwarder_relay_url();
+        $x_relay_token_key = isset( $_GET['relay_token_key'] ) ? sanitize_text_field( wp_unslash( $_GET['relay_token_key'] ) ) : '';
+        $x_relay_error     = isset( $_GET['relay_error'] )     ? sanitize_text_field( wp_unslash( $_GET['relay_error'] ) )     : '';
+
+        if ( $x_relay_error ) {
+            /* translators: %s: error description returned by the relay worker */
+            $x_oauth_notice = '<div class="notice notice-error is-dismissible"><p>'
+                . esc_html( sprintf( __( 'X connection failed: %s', 'post-forwarder' ), $x_relay_error ) )
+                . '</p></div>';
+        } elseif ( ! $x_relay_url ) {
+            $x_oauth_notice = '<div class="notice notice-error is-dismissible"><p>'
+                . esc_html__( 'X connection failed: Relay URL is not configured (POST_FORWARDER_RELAY_URL constant missing).', 'post-forwarder' )
+                . '</p></div>';
+        } elseif ( ! $x_relay_token_key ) {
+            $x_oauth_notice = '<div class="notice notice-error is-dismissible"><p>'
+                . esc_html__( 'X connection failed: relay_token_key missing from relay response.', 'post-forwarder' )
+                . '</p></div>';
+        } else {
+            $x_relay_response = wp_remote_post(
+                $x_relay_url . '/token',
+                array(
+                    'headers' => array( 'Content-Type' => 'application/json' ),
+                    'body'    => wp_json_encode( array( 'key' => $x_relay_token_key ) ),
+                    'timeout' => 15,
+                )
+            );
+
+            if ( is_wp_error( $x_relay_response ) ) {
+                $x_error_msg = $x_relay_response->get_error_message();
+                post_forwarder_log_error( 'X Relay /token request failed: ' . $x_error_msg );
+                /* translators: %s: error message */
+                $x_oauth_notice = '<div class="notice notice-error is-dismissible"><p>'
+                    . esc_html( sprintf( __( 'X connection failed: %s', 'post-forwarder' ), $x_error_msg ) )
+                    . '</p></div>';
+            } else {
+                $x_relay_http_code = wp_remote_retrieve_response_code( $x_relay_response );
+                $x_payload         = json_decode( wp_remote_retrieve_body( $x_relay_response ), true );
+
+                if ( 200 !== $x_relay_http_code || ! isset( $x_payload['access_token'] ) ) {
+                    $x_err_msg = is_array( $x_payload ) && isset( $x_payload['error'] ) ? $x_payload['error'] : 'HTTP ' . $x_relay_http_code;
+                    post_forwarder_log_error( 'X Relay /token returned unexpected response: ' . $x_err_msg );
+                    /* translators: %s: error detail */
+                    $x_oauth_notice = '<div class="notice notice-error is-dismissible"><p>'
+                        . esc_html( sprintf( __( 'X connection failed: Relay returned an error (%s).', 'post-forwarder' ), $x_err_msg ) )
+                        . '</p></div>';
+                } else {
+                    $x_portal_key = isset( $x_payload['portal_key'] ) ? sanitize_key( $x_payload['portal_key'] ) : '';
+                    $x_wp_nonce   = isset( $x_payload['wp_nonce'] )   ? $x_payload['wp_nonce'] : '';
+
+                    if ( ! $x_portal_key || ! wp_verify_nonce( $x_wp_nonce, 'x_oauth_' . $x_portal_key ) ) {
+                        $x_oauth_notice = '<div class="notice notice-error is-dismissible"><p>'
+                            . esc_html__( 'X connection failed: Security check failed.', 'post-forwarder' )
+                            . '</p></div>';
+                    } else {
+                        $x_relay_mappings = isset( $options['mappings'] ) ? $options['mappings'] : array();
+                        if ( ! is_array( $x_relay_mappings ) ) {
+                            $x_relay_mappings = json_decode( is_string( $x_relay_mappings ) ? $x_relay_mappings : '{}', true );
+                            if ( ! is_array( $x_relay_mappings ) ) {
+                                $x_relay_mappings = array();
+                            }
+                        }
+
+                        if ( ! isset( $x_relay_mappings[ $x_portal_key ]['type'] ) || 'x' !== $x_relay_mappings[ $x_portal_key ]['type'] ) {
+                            $x_oauth_notice = '<div class="notice notice-error is-dismissible"><p>'
+                                . esc_html__( 'X connection failed: Portal configuration not found.', 'post-forwarder' )
+                                . '</p></div>';
+                        } else {
+                            unset( $x_relay_mappings[ $x_portal_key ]['last_error'] );
+                            $x_relay_mappings[ $x_portal_key ]['access_token']  = $x_payload['access_token'];
+                            $x_relay_mappings[ $x_portal_key ]['token_expires'] = time() + (int) ( $x_payload['expires_in'] ?? 7200 );
+
+                            if ( ! empty( $x_payload['refresh_token'] ) ) {
+                                $x_relay_mappings[ $x_portal_key ]['refresh_token']         = $x_payload['refresh_token'];
+                                $x_relay_mappings[ $x_portal_key ]['refresh_token_expires'] = time() + (int) ( $x_payload['refresh_token_expires_in'] ?? 7776000 );
+                            }
+                            if ( ! empty( $x_payload['x_user_id'] ) ) {
+                                $x_relay_mappings[ $x_portal_key ]['x_user_id'] = sanitize_text_field( $x_payload['x_user_id'] );
+                            }
+                            if ( ! empty( $x_payload['x_username'] ) ) {
+                                $x_relay_mappings[ $x_portal_key ]['x_username'] = sanitize_text_field( $x_payload['x_username'] );
+                            }
+
+                            $options['mappings'] = wp_json_encode( $x_relay_mappings );
+                            update_option( 'post_forwarding_options', $options );
+                            $options = get_option( 'post_forwarding_options', array() );
+                            if ( is_string( $options ) ) {
+                                $options = json_decode( $options, true );
+                                if ( ! is_array( $options ) ) {
+                                    $options = array();
+                                }
+                            }
+                            $x_oauth_notice = '<div class="notice notice-success is-dismissible"><p>'
+                                . esc_html__( 'X account connected successfully!', 'post-forwarder' )
+                                . '</p></div>';
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Handle WordPress Application Password authorization callbacks.
+    $wp_auth_notice = '';
+
+    if ( isset( $_GET['wordpress_auth_callback'] ) ) {
+        $wp_portal_key = isset( $_GET['portal_key'] ) ? sanitize_key( wp_unslash( $_GET['portal_key'] ) ) : '';
+        $wp_nonce_val  = isset( $_GET['wp_nonce'] )   ? sanitize_text_field( wp_unslash( $_GET['wp_nonce'] ) ) : '';
+
+        if ( ! $wp_portal_key || ! wp_verify_nonce( $wp_nonce_val, 'wp_auth_' . $wp_portal_key ) ) {
+            $wp_auth_notice = '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'WordPress connection failed: security check failed.', 'post-forwarder' ) . '</p></div>';
+        } else {
+            $cb_user_login = isset( $_GET['user_login'] ) ? sanitize_user( wp_unslash( $_GET['user_login'] ), true ) : '';
+            $cb_password   = isset( $_GET['password'] )   ? sanitize_text_field( wp_unslash( $_GET['password'] ) )  : '';
+
+            if ( ! $cb_user_login || ! $cb_password ) {
+                $wp_auth_notice = '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'WordPress connection failed: credentials missing from callback.', 'post-forwarder' ) . '</p></div>';
+            } else {
+                $cb_mappings = isset( $options['mappings'] ) ? $options['mappings'] : array();
+                if ( ! is_array( $cb_mappings ) ) {
+                    $cb_mappings = json_decode( is_string( $cb_mappings ) ? $cb_mappings : '{}', true );
+                    if ( ! is_array( $cb_mappings ) ) {
+                        $cb_mappings = array();
+                    }
+                }
+                if ( ! isset( $cb_mappings[ $wp_portal_key ]['type'] ) || 'wordpress' !== $cb_mappings[ $wp_portal_key ]['type'] ) {
+                    $wp_auth_notice = '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'WordPress connection failed: portal configuration not found.', 'post-forwarder' ) . '</p></div>';
+                } else {
+                    unset( $cb_mappings[ $wp_portal_key ]['last_error'] );
+                    $cb_mappings[ $wp_portal_key ]['user']         = $cb_user_login;
+                    $cb_mappings[ $wp_portal_key ]['password']     = $cb_password;
+                    $cb_mappings[ $wp_portal_key ]['wp_auth_mode'] = 'button';
+                    // Store the WordPress site URL (where REST API / wp-admin actually live).
+                    if ( ! empty( $_GET['site_url'] ) ) {
+                        $cb_mappings[ $wp_portal_key ]['wp_site_url'] = esc_url_raw( wp_unslash( $_GET['site_url'] ) );
+                    }
+                    $options['mappings'] = wp_json_encode( $cb_mappings );
+                    update_option( 'post_forwarding_options', $options );
+                    $options = get_option( 'post_forwarding_options', array() );
+                    if ( is_string( $options ) ) {
+                        $options = json_decode( $options, true );
+                        if ( ! is_array( $options ) ) {
+                            $options = array();
+                        }
+                    }
+                    $wp_auth_notice = '<div class="notice notice-success is-dismissible"><p>'
+                        . esc_html( sprintf( __( 'WordPress site connected successfully as %s!', 'post-forwarder' ), $cb_user_login ) )
+                        . '</p></div>';
+                }
+            }
+        }
+    }
+
+    if ( isset( $_GET['wordpress_auth_rejected'] ) ) {
+        $wp_auth_notice = '<div class="notice notice-warning is-dismissible"><p>'
+            . esc_html__( 'WordPress connection was cancelled. You can try again or enter credentials manually.', 'post-forwarder' )
+            . '</p></div>';
+    }
+
+    if ( isset( $_GET['wp_connect_error'] ) && 'preflight_failed' === $_GET['wp_connect_error'] ) {
+        $wp_auth_notice = '<div class="notice notice-error is-dismissible"><p>'
+            . esc_html__( 'WordPress connection failed: could not reach the REST API on the target site. Make sure the URL is correct and the site runs WordPress 5.6+.', 'post-forwarder' )
+            . '</p></div>';
     }
 
     // Handle LinkedIn direct OAuth callback (non-relay mode).
@@ -511,75 +1051,11 @@ function post_forwarding_settings_page() {
         }
     }
 
-    // Handle form submission for the new interface
-    if (isset($_POST['submit_portals']) && isset($_POST['portals_nonce']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['portals_nonce'])), 'save_portals')) {
-        $portals = array();
-        $existing_mappings_for_save = isset($options['mappings']) ? $options['mappings'] : array();
-        if (!is_array($existing_mappings_for_save)) {
-            $mappings_json = is_string($existing_mappings_for_save) ? $existing_mappings_for_save : '{}';
-            $existing_mappings_for_save = json_decode($mappings_json, true);
-            if (!is_array($existing_mappings_for_save)) $existing_mappings_for_save = array();
-        }
-
-        if (isset($_POST['portals']) && is_array($_POST['portals'])) {
-            $portals_raw = wp_unslash($_POST['portals']);
-
-            foreach ($portals_raw as $index => $portal) {
-                if (!is_array($portal) || empty($portal['key']) || empty($portal['name'])) {
-                    continue;
-                }
-                $key  = sanitize_key($portal['key']);
-                $type = isset($portal['type']) && $portal['type'] === 'linkedin' ? 'linkedin' : 'wordpress';
-
-                if ($type === 'linkedin') {
-                    $portals[$key] = array(
-                        'type'          => 'linkedin',
-                        'name'          => sanitize_text_field($portal['name']),
-                        'client_id'     => sanitize_text_field(isset($portal['client_id'])     ? $portal['client_id']     : ''),
-                        'client_secret' => sanitize_text_field(isset($portal['client_secret']) ? $portal['client_secret'] : ''),
-                        'author_urn'    => sanitize_text_field(isset($portal['author_urn'])    ? $portal['author_urn']    : ''),
-                    );
-                    // Preserve OAuth tokens and derived fields — never overwrite via form submission.
-                    foreach ( array( 'access_token', 'refresh_token', 'token_expires', 'refresh_token_expires', 'person_urn', 'last_error' ) as $token_field ) {
-                        if ( isset( $existing_mappings_for_save[ $key ][ $token_field ] ) ) {
-                            $portals[ $key ][ $token_field ] = $existing_mappings_for_save[ $key ][ $token_field ];
-                        }
-                    }
-                } else {
-                    if (empty($portal['url'])) {
-                        continue;
-                    }
-                    $portals[$key] = array(
-                        'type'     => 'wordpress',
-                        'name'     => sanitize_text_field($portal['name']),
-                        'url'      => esc_url_raw($portal['url']),
-                        'user'     => sanitize_text_field(isset($portal['user'])     ? $portal['user']     : ''),
-                        'password' => sanitize_text_field(isset($portal['password']) ? $portal['password'] : ''),
-                    );
-                }
-            }
-        }
-
-        $options['mappings'] = wp_json_encode($portals);
-        update_option('post_forwarding_options', $options);
-
-        // After saving, if a "Save & Connect" was triggered for a LinkedIn portal, redirect to relay.
-        if ( ! empty( $_POST['pending_linkedin_connect'] ) ) {
-            $connect_key  = sanitize_key( wp_unslash( $_POST['pending_linkedin_connect'] ) );
-            $relay_target = post_forwarder_relay_url();
-            if ( $relay_target && isset( $portals[ $connect_key ] ) && 'linkedin' === $portals[ $connect_key ]['type'] ) {
-                wp_redirect( $relay_target . '/start?' . http_build_query( array(
-                    'return_url' => admin_url( 'options-general.php?page=post-forwarding' ),
-                    'portal_key' => $connect_key,
-                    'wp_nonce'   => wp_create_nonce( 'linkedin_oauth_' . $connect_key ),
-                ) ) );
-                exit;
-            }
-        }
-
-        echo '<div class="notice notice-success"><p>' . esc_html__('Accounts saved successfully!', 'post-forwarder') . '</p></div>';
+    // Show success notice after PRG redirect.
+    if ( isset( $_GET['portals_saved'] ) ) {
+        echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Accounts saved successfully!', 'post-forwarder' ) . '</p></div>';
     }
-    
+
     // Parse existing mappings.
     $mappings = isset( $options['mappings'] ) ? $options['mappings'] : array();
     if ( ! is_array( $mappings ) ) {
@@ -600,6 +1076,8 @@ function post_forwarding_settings_page() {
     <div class="wrap">
         <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
         <?php echo wp_kses_post($linkedin_oauth_notice); ?>
+        <?php echo wp_kses_post($x_oauth_notice); ?>
+        <?php echo wp_kses_post( $wp_auth_notice ); ?>
         <form method="post" action="options.php">
             <?php settings_fields('post_forwarding'); ?>
             <table class="form-table">
@@ -626,6 +1104,8 @@ function post_forwarding_settings_page() {
         <form method="post" action="">
             <?php wp_nonce_field('save_portals', 'portals_nonce'); ?>
             <input type="hidden" name="pending_linkedin_connect" value="">
+            <input type="hidden" name="pending_x_connect" value="">
+            <input type="hidden" name="pending_wp_connect" value="">
             
             <div id="portals-container">
 
@@ -639,6 +1119,7 @@ function post_forwarding_settings_page() {
                                     <select name="portals[0][type]" class="portal-type-select">
                                         <option value="wordpress"><?php esc_html_e( 'WordPress Portal', 'post-forwarder' ); ?></option>
                                         <option value="linkedin"><?php esc_html_e( 'LinkedIn Account', 'post-forwarder' ); ?></option>
+                                        <option value="x"><?php esc_html_e( 'X (Twitter) Account', 'post-forwarder' ); ?></option>
                                     </select>
                                 </td>
                             </tr>
@@ -655,12 +1136,23 @@ function post_forwarding_settings_page() {
                                 <td><input type="url" name="portals[0][url]" placeholder="https://example.com" style="width: 400px;" /></td>
                             </tr>
                             <tr class="fields-wordpress">
-                                <th><?php esc_html_e( 'User ID', 'post-forwarder' ); ?></th>
-                                <td><input type="text" name="portals[0][user]" placeholder="1728" style="width: 100px;" /></td>
+                                <th><?php esc_html_e( 'Connection', 'post-forwarder' ); ?></th>
+                                <td>
+                                    <button type="button" class="button save-and-connect-wp" style="background:#3858e9;border-color:#3858e9;color:#fff;">
+                                        &#10132; <?php esc_html_e( 'Save &amp; Connect with WordPress', 'post-forwarder' ); ?>
+                                    </button>
+                                    <p class="description" style="margin-top:6px;">
+                                        <a href="#" class="wp-manual-toggle"><?php esc_html_e( 'Enter credentials manually instead', 'post-forwarder' ); ?></a>
+                                    </p>
+                                </td>
                             </tr>
-                            <tr class="fields-wordpress">
+                            <tr class="fields-wordpress wp-manual-fields" style="display:none;">
+                                <th><?php esc_html_e( 'Username / User ID', 'post-forwarder' ); ?></th>
+                                <td><input type="text" name="portals[0][user]" placeholder="<?php esc_attr_e( 'username or user ID', 'post-forwarder' ); ?>" style="width: 200px;" /></td>
+                            </tr>
+                            <tr class="fields-wordpress wp-manual-fields" style="display:none;">
                                 <th><?php esc_html_e( 'App Password', 'post-forwarder' ); ?></th>
-                                <td><input type="text" name="portals[0][password]" placeholder="xxxx-xxxx-xxxx-xxxx" style="width: 300px;" /></td>
+                                <td><input type="text" name="portals[0][password]" placeholder="xxxx xxxx xxxx xxxx" style="width: 300px;" /></td>
                             </tr>
                             <?php if ( ! $li_creds_from_constants ) : ?>
                             <tr class="fields-linkedin" style="display:none;">
@@ -686,6 +1178,16 @@ function post_forwarding_settings_page() {
                                         <button type="button" class="button save-and-connect-linkedin" style="background:#0a66c2;border-color:#0a66c2;color:#fff;">&#10132; <?php esc_html_e( 'Save &amp; Connect with LinkedIn', 'post-forwarder' ); ?></button>
                                     <?php else : ?>
                                         <span style="color:#666;"><?php esc_html_e( 'Save the account first, then click Connect with LinkedIn.', 'post-forwarder' ); ?></span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                            <tr class="fields-x" style="display:none;">
+                                <th><?php esc_html_e( 'Connection Status', 'post-forwarder' ); ?></th>
+                                <td>
+                                    <?php if ( post_forwarder_relay_url() ) : ?>
+                                        <button type="button" class="button save-and-connect-x" style="background:#000;border-color:#000;color:#fff;">&#10132; <?php esc_html_e( 'Save &amp; Connect with X', 'post-forwarder' ); ?></button>
+                                    <?php else : ?>
+                                        <span style="color:#666;"><?php esc_html_e( 'X connection requires the relay. Configure POST_FORWARDER_RELAY_URL first.', 'post-forwarder' ); ?></span>
                                     <?php endif; ?>
                                 </td>
                             </tr>
@@ -724,24 +1226,118 @@ function post_forwarding_settings_page() {
                                 'scope'         => 'w_member_social openid profile',
                             ) );
                         }
+
+                        $is_x           = ( 'x' === $mapping_type );
+                        $is_x_connected = $is_x
+                            && ! empty( $mapping['access_token'] )
+                            && ( ! isset( $mapping['token_expires'] ) || $mapping['token_expires'] > time() );
+                        $x_oauth_url    = ( $is_x && $relay_url_val )
+                            ? $relay_url_val . '/x/start?' . http_build_query( array(
+                                'return_url' => admin_url( 'options-general.php?page=post-forwarding' ),
+                                'portal_key' => $key,
+                                'wp_nonce'   => wp_create_nonce( 'x_oauth_' . $key ),
+                            ) )
+                            : '';
+
+                        $wp_button_connected = ( 'wordpress' === $mapping_type )
+                            && ! empty( $mapping['user'] )
+                            && ! empty( $mapping['password'] )
+                            && isset( $mapping['wp_auth_mode'] ) && 'button' === $mapping['wp_auth_mode'];
+                        $wp_manual_has_data  = ( 'wordpress' === $mapping_type )
+                            && ( ! empty( $mapping['user'] ) || ! empty( $mapping['password'] ) )
+                            && ! $wp_button_connected;
+
+                        // Determine overall connected state and build summary info for the compact header.
+                        $is_portal_connected = $is_connected || $is_x_connected || $wp_button_connected || $wp_manual_has_data;
+
+                        if ( $is_linkedin ) {
+                            $summary_badge = '<span style="background:#0a66c2;color:#fff;font-size:11px;padding:2px 8px;border-radius:3px;flex-shrink:0;">LI</span>';
+                            if ( $is_connected ) {
+                                $summary_status = '<span style="color:#00a32a;font-weight:600;">&#10003; Connected</span>';
+                                if ( ! empty( $mapping['person_urn'] ) ) {
+                                    $summary_status .= ' <span style="color:#666;font-size:12px;">' . esc_html( $mapping['person_urn'] ) . '</span>';
+                                }
+                                if ( isset( $mapping['token_expires'] ) ) {
+                                    $exp_label = $mapping['token_expires'] > time()
+                                        ? esc_html( sprintf( __( 'Token expires: %s', 'post-forwarder' ), date_i18n( get_option( 'date_format' ), $mapping['token_expires'] ) ) )
+                                        : '<span style="color:#cc0000;">' . esc_html__( 'Token expired', 'post-forwarder' ) . '</span>';
+                                    $summary_status .= ' <span style="color:#999;font-size:11px;margin-left:6px;">· ' . $exp_label . '</span>';
+                                }
+                                $summary_action = '<a href="' . esc_url( $oauth_url ) . '" class="button button-secondary button-small">' . esc_html__( 'Reconnect', 'post-forwarder' ) . '</a>';
+                            } else {
+                                $summary_status = '<span style="color:#999;">' . esc_html__( 'Not connected', 'post-forwarder' ) . '</span>';
+                                $summary_action = $has_credentials
+                                    ? '<a href="' . esc_url( $oauth_url ) . '" class="button button-small" style="background:#0a66c2;border-color:#0a66c2;color:#fff;">&#10132; ' . esc_html__( 'Connect', 'post-forwarder' ) . '</a>'
+                                    : '';
+                            }
+                        } elseif ( $is_x ) {
+                            $summary_badge = '<span style="background:#000;color:#fff;font-size:11px;padding:2px 8px;border-radius:3px;flex-shrink:0;">X</span>';
+                            if ( $is_x_connected ) {
+                                $summary_status = '<span style="color:#00a32a;font-weight:600;">&#10003; Connected</span>';
+                                if ( ! empty( $mapping['x_username'] ) ) {
+                                    $summary_status .= ' <span style="color:#666;font-size:12px;">@' . esc_html( $mapping['x_username'] ) . '</span>';
+                                }
+                                if ( isset( $mapping['token_expires'] ) ) {
+                                    $exp_label = $mapping['token_expires'] > time()
+                                        ? esc_html( sprintf( __( 'Token expires: %s', 'post-forwarder' ), date_i18n( get_option( 'date_format' ), $mapping['token_expires'] ) ) )
+                                        : '<span style="color:#cc0000;">' . esc_html__( 'Token expired', 'post-forwarder' ) . '</span>';
+                                    $summary_status .= ' <span style="color:#999;font-size:11px;margin-left:6px;">· ' . $exp_label . '</span>';
+                                }
+                                $summary_action = $x_oauth_url
+                                    ? '<a href="' . esc_url( $x_oauth_url ) . '" class="button button-secondary button-small">' . esc_html__( 'Reconnect', 'post-forwarder' ) . '</a>'
+                                    : '';
+                            } else {
+                                $summary_status = '<span style="color:#999;">' . esc_html__( 'Not connected', 'post-forwarder' ) . '</span>';
+                                $summary_action = $x_oauth_url
+                                    ? '<a href="' . esc_url( $x_oauth_url ) . '" class="button button-small" style="background:#000;border-color:#000;color:#fff;">&#10132; ' . esc_html__( 'Connect', 'post-forwarder' ) . '</a>'
+                                    : '';
+                            }
+                        } else {
+                            $summary_badge = '<span style="background:#3858e9;color:#fff;font-size:11px;padding:2px 8px;border-radius:3px;flex-shrink:0;">WP</span>';
+                            if ( $wp_button_connected || $wp_manual_has_data ) {
+                                $summary_status = '<span style="color:#00a32a;font-weight:600;">&#10003; Connected</span>';
+                                if ( ! empty( $mapping['user'] ) ) {
+                                    $summary_status .= ' <span style="color:#666;font-size:12px;">' . esc_html( $mapping['user'] ) . '</span>';
+                                }
+                                if ( ! empty( $mapping['url'] ) ) {
+                                    $summary_status .= ' <span style="color:#999;font-size:11px;margin-left:4px;">· ' . esc_html( wp_parse_url( $mapping['url'], PHP_URL_HOST ) ) . '</span>';
+                                }
+                                $summary_action = '<button type="button" class="button button-secondary button-small save-and-connect-wp">' . esc_html__( 'Reconnect', 'post-forwarder' ) . '</button>';
+                            } else {
+                                $summary_status = '<span style="color:#999;">' . esc_html__( 'Not connected', 'post-forwarder' ) . '</span>';
+                                $summary_action = '';
+                            }
+                        }
                         ?>
-                        <div class="portal-row" style="border: 1px solid #ddd; padding: 15px; margin-bottom: 10px;" data-type="<?php echo esc_attr($mapping_type); ?>">
-                            <h4>
-                                <?php
-                                /* translators: %d: Account number */
-                                echo esc_html(sprintf(__('Account #%d', 'post-forwarder'), $i + 1));
-                                ?>
-                                <?php if ($is_linkedin): ?>
-                                    <span style="background:#0a66c2;color:#fff;font-size:11px;padding:2px 7px;border-radius:3px;margin-left:8px;font-weight:normal;">LinkedIn</span>
-                                <?php endif; ?>
+                        <div class="portal-row" style="border:1px solid #ddd;border-radius:4px;margin-bottom:10px;overflow:hidden;" data-type="<?php echo esc_attr($mapping_type); ?>">
+
+                            <?php if ( $is_portal_connected ) : ?>
+                            <div class="portal-summary" style="display:flex;align-items:center;gap:10px;padding:10px 15px;background:#fafafa;cursor:pointer;" title="<?php esc_attr_e( 'Click to expand', 'post-forwarder' ); ?>">
+                                <?php echo $summary_badge; // phpcs:ignore WordPress.Security.EscapeOutput ?>
+                                <strong style="flex-shrink:0;"><?php echo esc_html( $mapping['name'] ); ?></strong>
+                                <span style="color:#bbb;font-size:11px;flex-shrink:0;"><?php echo esc_html( $key ); ?></span>
+                                <span style="flex:1;min-width:0;"><?php echo wp_kses( $summary_status, array( 'span' => array( 'style' => array() ) ) ); ?></span>
+                                <?php echo wp_kses( $summary_action, array( 'a' => array( 'href' => array(), 'class' => array(), 'style' => array() ), 'button' => array( 'type' => array(), 'class' => array(), 'style' => array() ) ) ); ?>
+                                <button type="button" class="button button-small portal-expand-btn" style="flex-shrink:0;">
+                                    <?php esc_html_e( 'Edit', 'post-forwarder' ); ?> &#9660;
+                                </button>
+                            </div>
+                            <?php endif; ?>
+
+                            <div class="portal-detail" style="padding:15px;<?php echo $is_portal_connected ? 'display:none;' : ''; ?>">
+                            <?php if ( ! $is_portal_connected ) : ?>
+                            <h4 style="margin-top:0;">
+                                <?php echo esc_html( sprintf( __( 'Account #%d', 'post-forwarder' ), $i + 1 ) ); ?>
                             </h4>
-                            <table class="form-table">
+                            <?php endif; ?>
+                            <table class="form-table" style="margin-top:0;">
                                 <tr>
                                     <th><?php esc_html_e('Account Type', 'post-forwarder'); ?></th>
                                     <td>
                                         <select name="portals[<?php echo esc_attr($i); ?>][type]" class="portal-type-select">
                                             <option value="wordpress" <?php selected($mapping_type, 'wordpress'); ?>><?php esc_html_e('WordPress Portal', 'post-forwarder'); ?></option>
                                             <option value="linkedin"  <?php selected($mapping_type, 'linkedin');   ?>><?php esc_html_e('LinkedIn Account',  'post-forwarder'); ?></option>
+                                            <option value="x"         <?php selected($mapping_type, 'x');         ?>><?php esc_html_e('X (Twitter) Account', 'post-forwarder'); ?></option>
                                         </select>
                                     </td>
                                 </tr>
@@ -753,17 +1349,53 @@ function post_forwarding_settings_page() {
                                     <th><?php esc_html_e('Account Name', 'post-forwarder'); ?></th>
                                     <td><input type="text" name="portals[<?php echo esc_attr($i); ?>][name]" value="<?php echo esc_attr($mapping['name']); ?>" style="width: 300px;" /></td>
                                 </tr>
-                                <tr class="fields-wordpress" <?php echo $is_linkedin ? 'style="display:none;"' : ''; ?>>
-                                    <th><?php esc_html_e('URL', 'post-forwarder'); ?></th>
-                                    <td><input type="url" name="portals[<?php echo esc_attr($i); ?>][url]" value="<?php echo esc_attr(isset($mapping['url']) ? $mapping['url'] : ''); ?>" style="width: 400px;" /></td>
+                                <tr class="fields-wordpress" <?php echo ( $is_linkedin || $is_x ) ? 'style="display:none;"' : ''; ?>>
+                                    <th><?php esc_html_e( 'URL', 'post-forwarder' ); ?></th>
+                                    <td><input type="url" name="portals[<?php echo esc_attr($i); ?>][url]"
+                                         value="<?php echo esc_attr( isset( $mapping['url'] ) ? $mapping['url'] : '' ); ?>"
+                                         style="width: 400px;" /></td>
                                 </tr>
-                                <tr class="fields-wordpress" <?php echo $is_linkedin ? 'style="display:none;"' : ''; ?>>
-                                    <th><?php esc_html_e('User ID', 'post-forwarder'); ?></th>
-                                    <td><input type="text" name="portals[<?php echo esc_attr($i); ?>][user]" value="<?php echo esc_attr(isset($mapping['user']) ? $mapping['user'] : ''); ?>" style="width: 100px;" /></td>
+                                <tr class="fields-wordpress" <?php echo ( $is_linkedin || $is_x ) ? 'style="display:none;"' : ''; ?>>
+                                    <th><?php esc_html_e( 'Connection', 'post-forwarder' ); ?></th>
+                                    <td>
+                                        <?php if ( $wp_button_connected ) : ?>
+                                            <span style="color:#00a32a;font-weight:600;">&#10003; <?php esc_html_e( 'Connected', 'post-forwarder' ); ?></span>
+                                            <span style="color:#666;font-size:12px;margin-left:8px;"><?php echo esc_html( $mapping['user'] ); ?></span>
+                                            <button type="button" class="button button-secondary save-and-connect-wp" style="margin-left:10px;">
+                                                <?php esc_html_e( 'Reconnect', 'post-forwarder' ); ?>
+                                            </button>
+                                        <?php else : ?>
+                                            <button type="button" class="button save-and-connect-wp" style="background:#3858e9;border-color:#3858e9;color:#fff;">
+                                                &#10132; <?php esc_html_e( 'Save &amp; Connect with WordPress', 'post-forwarder' ); ?>
+                                            </button>
+                                        <?php endif; ?>
+                                        <?php if ( ! empty( $mapping['last_error'] ) && ! $wp_button_connected ) : ?>
+                                            <p class="description" style="color:#cc0000;margin-top:6px;">
+                                                <strong><?php esc_html_e( 'Last error:', 'post-forwarder' ); ?></strong>
+                                                <?php echo esc_html( $mapping['last_error'] ); ?>
+                                            </p>
+                                        <?php endif; ?>
+                                        <?php if ( ! $wp_button_connected ) : ?>
+                                        <p class="description" style="margin-top:6px;">
+                                            <a href="#" class="wp-manual-toggle"><?php esc_html_e( 'Enter credentials manually instead', 'post-forwarder' ); ?></a>
+                                        </p>
+                                        <?php endif; ?>
+                                    </td>
                                 </tr>
-                                <tr class="fields-wordpress" <?php echo $is_linkedin ? 'style="display:none;"' : ''; ?>>
-                                    <th><?php esc_html_e('App Password', 'post-forwarder'); ?></th>
-                                    <td><input type="text" name="portals[<?php echo esc_attr($i); ?>][password]" value="<?php echo esc_attr(isset($mapping['password']) ? $mapping['password'] : ''); ?>" style="width: 300px;" /></td>
+                                <?php $show_manual = ( ! $is_linkedin && ! $is_x && $wp_manual_has_data ) ? '' : 'style="display:none;"'; ?>
+                                <tr class="fields-wordpress wp-manual-fields" <?php echo $show_manual; ?>>
+                                    <th><?php esc_html_e( 'Username / User ID', 'post-forwarder' ); ?></th>
+                                    <td><input type="text" name="portals[<?php echo esc_attr($i); ?>][user]"
+                                         value="<?php echo esc_attr( isset( $mapping['user'] ) ? $mapping['user'] : '' ); ?>"
+                                         placeholder="<?php esc_attr_e( 'username or user ID', 'post-forwarder' ); ?>"
+                                         style="width: 200px;" /></td>
+                                </tr>
+                                <tr class="fields-wordpress wp-manual-fields" <?php echo $show_manual; ?>>
+                                    <th><?php esc_html_e( 'App Password', 'post-forwarder' ); ?></th>
+                                    <td><input type="text" name="portals[<?php echo esc_attr($i); ?>][password]"
+                                         value="<?php echo esc_attr( isset( $mapping['password'] ) ? $mapping['password'] : '' ); ?>"
+                                         placeholder="xxxx xxxx xxxx xxxx"
+                                         style="width: 300px;" /></td>
                                 </tr>
                                 <?php if ( ! $li_creds_from_constants ) : ?>
                                 <tr class="fields-linkedin" <?php echo $is_linkedin ? '' : 'style="display:none;"'; ?>>
@@ -822,11 +1454,49 @@ function post_forwarding_settings_page() {
                                         <?php endif; ?>
                                     </td>
                                 </tr>
+                                <tr class="fields-x" <?php echo $is_x ? '' : 'style="display:none;"'; ?>>
+                                    <th><?php esc_html_e( 'Connection Status', 'post-forwarder' ); ?></th>
+                                    <td>
+                                        <?php if ( $is_x_connected ) : ?>
+                                            <span style="color:#00a32a;font-weight:600;">&#10003; <?php esc_html_e( 'Connected', 'post-forwarder' ); ?></span>
+                                            <?php if ( ! empty( $mapping['x_username'] ) ) : ?>
+                                                <span style="color:#666;font-size:12px;margin-left:8px;">@<?php echo esc_html( $mapping['x_username'] ); ?></span>
+                                            <?php endif; ?>
+                                            <?php if ( $x_oauth_url ) : ?>
+                                                <a href="<?php echo esc_url( $x_oauth_url ); ?>" class="button button-secondary" style="margin-left:10px;"><?php esc_html_e( 'Reconnect', 'post-forwarder' ); ?></a>
+                                            <?php endif; ?>
+                                        <?php elseif ( $x_oauth_url ) : ?>
+                                            <span style="color:#666;"><?php esc_html_e( 'Not connected', 'post-forwarder' ); ?></span>
+                                            <a href="<?php echo esc_url( $x_oauth_url ); ?>" class="button" style="margin-left:10px;background:#000;border-color:#000;color:#fff;">&#10132; <?php esc_html_e( 'Connect with X', 'post-forwarder' ); ?></a>
+                                        <?php else : ?>
+                                            <span style="color:#666;"><?php esc_html_e( 'X connection requires the relay. Configure POST_FORWARDER_RELAY_URL first.', 'post-forwarder' ); ?></span>
+                                        <?php endif; ?>
+                                        <?php if ( $is_x && ! empty( $mapping['last_error'] ) && ! $is_x_connected ) : ?>
+                                            <p class="description" style="color:#cc0000;margin-top:6px;">
+                                                <strong><?php esc_html_e( 'Last error:', 'post-forwarder' ); ?></strong>
+                                                <?php echo esc_html( $mapping['last_error'] ); ?>
+                                            </p>
+                                        <?php endif; ?>
+                                        <?php if ( $is_x && isset( $mapping['token_expires'] ) ) : ?>
+                                            <p class="description">
+                                                <?php if ( $mapping['token_expires'] > time() ) : ?>
+                                                    <?php
+                                                    /* translators: %s: expiry date */
+                                                    echo esc_html( sprintf( __( 'Token expires: %s', 'post-forwarder' ), date_i18n( get_option( 'date_format' ), $mapping['token_expires'] ) ) );
+                                                    ?>
+                                                <?php else : ?>
+                                                    <span style="color:#cc0000;"><?php esc_html_e( 'Token expired — please reconnect.', 'post-forwarder' ); ?></span>
+                                                <?php endif; ?>
+                                            </p>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
                             </table>
-                            <button type="button" class="button test-connection" style="margin-right: 8px;<?php echo $is_linkedin ? ' display:none;' : ''; ?>"><?php esc_html_e('Test Connection', 'post-forwarder'); ?></button>
+                            <button type="button" class="button test-connection" style="margin-right: 8px;<?php echo ( $is_linkedin || $is_x ) ? ' display:none;' : ''; ?>"><?php esc_html_e('Test Connection', 'post-forwarder'); ?></button>
                             <span class="connection-result" style="font-weight: 600;"></span>
                             <button type="button" class="button remove-portal" style="float: right;"><?php esc_html_e('Remove Account', 'post-forwarder'); ?></button>
-                        </div>
+                        </div><!-- end portal-detail -->
+                        </div><!-- end portal-row -->
                         <?php $i++; ?>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -864,15 +1534,10 @@ function post_forwarding_settings_page() {
         // Toggle field visibility based on account type
         function updatePortalFields($row) {
             var type = $row.find('.portal-type-select').val();
-            if (type === 'linkedin') {
-                $row.find('.fields-wordpress').hide();
-                $row.find('.fields-linkedin').show();
-                $row.find('.test-connection').hide();
-            } else {
-                $row.find('.fields-wordpress').show();
-                $row.find('.fields-linkedin').hide();
-                $row.find('.test-connection').show();
-            }
+            $row.find('.fields-wordpress').toggle(type === 'wordpress');
+            $row.find('.fields-linkedin').toggle(type === 'linkedin');
+            $row.find('.fields-x').toggle(type === 'x');
+            $row.find('.test-connection').toggle(type === 'wordpress');
         }
 
         $(document).on('change', '.portal-type-select', function() {
@@ -893,17 +1558,27 @@ function post_forwarding_settings_page() {
                 '<select name="portals[' + n + '][type]" class="portal-type-select">' +
                 '<option value="wordpress"><?php echo esc_js( __( 'WordPress Portal', 'post-forwarder' ) ); ?></option>' +
                 '<option value="linkedin"><?php echo esc_js( __( 'LinkedIn Account', 'post-forwarder' ) ); ?></option>' +
+                '<option value="x"><?php echo esc_js( __( 'X (Twitter) Account', 'post-forwarder' ) ); ?></option>' +
                 '</select></td></tr>' +
                 '<tr><th><?php echo esc_js( __( 'Account Key', 'post-forwarder' ) ); ?></th><td><input type="text" name="portals[' + n + '][key]" placeholder="<?php echo esc_js( __( 'e.g., portal1', 'post-forwarder' ) ); ?>" style="width: 200px;" /></td></tr>' +
-                '<tr><th><?php echo esc_js( __( 'Account Name', 'post-forwarder' ) ); ?></th><td><input type="text" name="portals[' + n + '][name]" placeholder="<?php echo esc_js( __( 'e.g., My LinkedIn', 'post-forwarder' ) ); ?>" style="width: 300px;" /></td></tr>' +
+                '<tr><th><?php echo esc_js( __( 'Account Name', 'post-forwarder' ) ); ?></th><td><input type="text" name="portals[' + n + '][name]" placeholder="<?php echo esc_js( __( 'e.g., My Account', 'post-forwarder' ) ); ?>" style="width: 300px;" /></td></tr>' +
                 '<tr class="fields-wordpress"><th><?php echo esc_js( __( 'URL', 'post-forwarder' ) ); ?></th><td><input type="url" name="portals[' + n + '][url]" placeholder="https://example.com" style="width: 400px;" /></td></tr>' +
-                '<tr class="fields-wordpress"><th><?php echo esc_js( __( 'User ID', 'post-forwarder' ) ); ?></th><td><input type="text" name="portals[' + n + '][user]" placeholder="1728" style="width: 100px;" /></td></tr>' +
-                '<tr class="fields-wordpress"><th><?php echo esc_js( __( 'App Password', 'post-forwarder' ) ); ?></th><td><input type="text" name="portals[' + n + '][password]" placeholder="xxxx-xxxx-xxxx-xxxx" style="width: 300px;" /></td></tr>' +
+                '<tr class="fields-wordpress"><th><?php echo esc_js( __( 'Connection', 'post-forwarder' ) ); ?></th><td>' +
+                '<button type="button" class="button save-and-connect-wp" style="background:#3858e9;border-color:#3858e9;color:#fff;">&#10132; <?php echo esc_js( __( 'Save &amp; Connect with WordPress', 'post-forwarder' ) ); ?></button>' +
+                '<p class="description" style="margin-top:6px;"><a href="#" class="wp-manual-toggle"><?php echo esc_js( __( 'Enter credentials manually instead', 'post-forwarder' ) ); ?></a></p>' +
+                '</td></tr>' +
+                '<tr class="fields-wordpress wp-manual-fields" style="display:none;"><th><?php echo esc_js( __( 'Username / User ID', 'post-forwarder' ) ); ?></th><td><input type="text" name="portals[' + n + '][user]" placeholder="<?php echo esc_js( __( 'username or user ID', 'post-forwarder' ) ); ?>" style="width: 200px;" /></td></tr>' +
+                '<tr class="fields-wordpress wp-manual-fields" style="display:none;"><th><?php echo esc_js( __( 'App Password', 'post-forwarder' ) ); ?></th><td><input type="text" name="portals[' + n + '][password]" placeholder="xxxx xxxx xxxx xxxx" style="width: 300px;" /></td></tr>' +
                 liCredFields +
                 '<tr class="fields-linkedin" style="display:none;"><th><?php echo esc_js( __( 'Connection Status', 'post-forwarder' ) ); ?></th><td>' +
                 ( relayMode
                     ? '<button type="button" class="button save-and-connect-linkedin" style="background:#0a66c2;border-color:#0a66c2;color:#fff;">&#10132; <?php echo esc_js( __( 'Save &amp; Connect with LinkedIn', 'post-forwarder' ) ); ?></button>'
                     : '<span style="color:#666;"><?php echo esc_js( __( 'Save the account first, then click Connect with LinkedIn.', 'post-forwarder' ) ); ?></span>'
+                ) + '</td></tr>' +
+                '<tr class="fields-x" style="display:none;"><th><?php echo esc_js( __( 'Connection Status', 'post-forwarder' ) ); ?></th><td>' +
+                ( relayMode
+                    ? '<button type="button" class="button save-and-connect-x" style="background:#000;border-color:#000;color:#fff;">&#10132; <?php echo esc_js( __( 'Save &amp; Connect with X', 'post-forwarder' ) ); ?></button>'
+                    : '<span style="color:#666;"><?php echo esc_js( __( 'X connection requires the relay. Configure POST_FORWARDER_RELAY_URL first.', 'post-forwarder' ) ); ?></span>'
                 ) + '</td></tr>' +
                 '</table>' +
                 '<button type="button" class="button test-connection" style="margin-right: 8px;"><?php echo esc_js( __( 'Test Connection', 'post-forwarder' ) ); ?></button>' +
@@ -935,6 +1610,69 @@ function post_forwarding_settings_page() {
             $row.closest('form').find('input[name="submit_portals"]').click();
         });
 
+        $(document).on('click', '.save-and-connect-x', function() {
+            var $row  = $(this).closest('.portal-row');
+            var key   = $.trim($row.find('input[name$="[key]"]').val());
+            var name  = $.trim($row.find('input[name$="[name]"]').val());
+            if (!key) {
+                alert('<?php echo esc_js( __( 'Please enter an Account Key first.', 'post-forwarder' ) ); ?>');
+                return;
+            }
+            if (!name) {
+                alert('<?php echo esc_js( __( 'Please enter an Account Name first.', 'post-forwarder' ) ); ?>');
+                return;
+            }
+            $('input[name="pending_x_connect"]').val(key);
+            $row.closest('form').find('input[name="submit_portals"]').click();
+        });
+
+        $(document).on('click', '.save-and-connect-wp', function() {
+            var $row = $(this).closest('.portal-row');
+            var key  = $.trim($row.find('input[name$="[key]"]').val());
+            var name = $.trim($row.find('input[name$="[name]"]').val());
+            var url  = $.trim($row.find('input[name$="[url]"]').val());
+            if (!key) {
+                alert('<?php echo esc_js( __( 'Please enter an Account Key first.', 'post-forwarder' ) ); ?>');
+                return;
+            }
+            if (!name) {
+                alert('<?php echo esc_js( __( 'Please enter an Account Name first.', 'post-forwarder' ) ); ?>');
+                return;
+            }
+            if (!url) {
+                alert('<?php echo esc_js( __( 'Please enter the WordPress site URL first.', 'post-forwarder' ) ); ?>');
+                return;
+            }
+            $('input[name="pending_wp_connect"]').val(key);
+            $row.closest('form').find('input[name="submit_portals"]').click();
+        });
+
+        $(document).on('click', '.wp-manual-toggle', function(e) {
+            e.preventDefault();
+            var $connectRow = $(this).closest('tr');
+            $connectRow.nextAll('.wp-manual-fields').slice(0, 2).toggle();
+        });
+
+        // Expand/collapse connected portal detail.
+        $(document).on('click', '.portal-expand-btn', function(e) {
+            e.stopPropagation();
+            var $row    = $(this).closest('.portal-row');
+            var $detail = $row.find('.portal-detail');
+            var $btn    = $(this);
+            if ($detail.is(':visible')) {
+                $detail.slideUp(150);
+                $btn.html('<?php echo esc_js( __( 'Edit', 'post-forwarder' ) ); ?> &#9660;');
+            } else {
+                $detail.slideDown(150);
+                $btn.html('<?php echo esc_js( __( 'Collapse', 'post-forwarder' ) ); ?> &#9650;');
+            }
+        });
+
+        $(document).on('click', '.portal-summary', function(e) {
+            if ($(e.target).closest('button, a').length) { return; }
+            $(this).find('.portal-expand-btn').trigger('click');
+        });
+
         $(document).on('click', '.test-connection', function() {
             var $btn = $(this);
             var $row = $btn.closest('.portal-row');
@@ -944,7 +1682,7 @@ function post_forwarding_settings_page() {
             var password = $row.find('input[name$="[password]"]').val();
 
             if (!url || !user || !password) {
-                $result.css('color', '#cc0000').text('<?php echo esc_js(__('Please fill in URL, User ID, and App Password first.', 'post-forwarder')); ?>');
+                $result.css('color', '#cc0000').text('<?php echo esc_js(__('Please fill in URL, Username/User ID, and App Password first.', 'post-forwarder')); ?>');
                 return;
             }
 
@@ -1029,10 +1767,10 @@ function post_forwarder_test_connection_callback() {
 // LinkedIn post forwarding
 function post_forwarder_forward_to_linkedin($post, $mapping) {
     if (empty($mapping['access_token'])) {
-        return false;
+        return array('success' => false, 'message' => __('No access token — please connect the account.', 'post-forwarder'));
     }
     if (isset($mapping['token_expires']) && $mapping['token_expires'] <= time()) {
-        return false; // Token expired
+        return array('success' => false, 'message' => __('Token expired — please reconnect.', 'post-forwarder'));
     }
     $author_urn = isset( $mapping['author_urn'] ) ? trim( $mapping['author_urn'] ) : '';
 
@@ -1043,7 +1781,7 @@ function post_forwarder_forward_to_linkedin($post, $mapping) {
 
     if ( empty( $author_urn ) ) {
         post_forwarder_log_error( 'LinkedIn post skipped: no author URN configured.' );
-        return false;
+        return array('success' => false, 'message' => __('No Author URN configured.', 'post-forwarder'));
     }
 
     // Build commentary: use excerpt or strip post content
@@ -1097,20 +1835,198 @@ function post_forwarder_forward_to_linkedin($post, $mapping) {
     ));
 
     if ( is_wp_error( $response ) ) {
-        post_forwarder_log_error( 'LinkedIn post failed (WP_Error): ' . $response->get_error_message() );
-        return false;
+        $msg = $response->get_error_message();
+        post_forwarder_log_error( 'LinkedIn post failed (WP_Error): ' . $msg );
+        return array('success' => false, 'message' => $msg);
     }
 
     $code      = wp_remote_retrieve_response_code( $response );
-    $success   = ( $code >= 200 && $code < 300 );
+    $body      = wp_remote_retrieve_body( $response );
 
-    if ( ! $success ) {
-        post_forwarder_log_error(
-            'LinkedIn post failed (HTTP ' . $code . '): ' . wp_remote_retrieve_body( $response )
-        );
+    if ( $code >= 200 && $code < 300 ) {
+        return array('success' => true, 'message' => __('Posted successfully.', 'post-forwarder'));
     }
 
-    return $success;
+    post_forwarder_log_error( 'LinkedIn post failed (HTTP ' . $code . '): ' . $body );
+    $err_data = json_decode( $body, true );
+    $err_msg  = ( is_array( $err_data ) && ! empty( $err_data['message'] ) )
+        ? $err_data['message']
+        : 'HTTP ' . $code;
+    return array('success' => false, 'message' => $err_msg);
+}
+
+// X (Twitter) post forwarding
+function post_forwarder_forward_to_x( $post, $mapping, $portal_key ) {
+    if ( empty( $mapping['access_token'] ) ) {
+        post_forwarder_log_error( 'X post skipped: no access token stored.' );
+        return array('success' => false, 'message' => __('No access token — please connect the account.', 'post-forwarder'));
+    }
+
+    // Refresh the access token when expired (X tokens last only 2 hours).
+    if ( isset( $mapping['token_expires'] ) && $mapping['token_expires'] <= time() ) {
+        if ( empty( $mapping['refresh_token'] ) ) {
+            post_forwarder_log_error( 'X post skipped: token expired and no refresh token available.' );
+            return array('success' => false, 'message' => __('Token expired and no refresh token — please reconnect.', 'post-forwarder'));
+        }
+
+        $relay_url = post_forwarder_relay_url();
+        if ( ! $relay_url ) {
+            post_forwarder_log_error( 'X post skipped: token expired but relay URL not configured for refresh.' );
+            return array('success' => false, 'message' => __('Token expired and relay not configured — please reconnect.', 'post-forwarder'));
+        }
+
+        $refresh_response = wp_remote_post(
+            $relay_url . '/x/refresh',
+            array(
+                'headers' => array( 'Content-Type' => 'application/json' ),
+                'body'    => wp_json_encode( array( 'refresh_token' => $mapping['refresh_token'] ) ),
+                'timeout' => 20,
+            )
+        );
+
+        if ( is_wp_error( $refresh_response ) ) {
+            post_forwarder_log_error( 'X token refresh failed: ' . $refresh_response->get_error_message() );
+            return array('success' => false, 'message' => 'Token refresh failed: ' . $refresh_response->get_error_message());
+        }
+
+        $refresh_data = json_decode( wp_remote_retrieve_body( $refresh_response ), true );
+        $refresh_code = wp_remote_retrieve_response_code( $refresh_response );
+
+        if ( 200 !== $refresh_code || empty( $refresh_data['access_token'] ) ) {
+            $err = is_array( $refresh_data ) && isset( $refresh_data['error'] ) ? $refresh_data['error'] : 'HTTP ' . $refresh_code;
+            post_forwarder_log_error( 'X token refresh returned error: ' . $err );
+            return array('success' => false, 'message' => 'Token refresh failed: ' . $err . ' — please reconnect.');
+        }
+
+        // Persist the new tokens into the stored options.
+        $options = get_option( 'post_forwarding_options', array() );
+        if ( is_string( $options ) ) {
+            $options = json_decode( $options, true );
+            if ( ! is_array( $options ) ) { $options = array(); }
+        }
+        $stored_mappings = isset( $options['mappings'] ) ? $options['mappings'] : array();
+        if ( ! is_array( $stored_mappings ) ) {
+            $stored_mappings = json_decode( is_string( $stored_mappings ) ? $stored_mappings : '{}', true );
+            if ( ! is_array( $stored_mappings ) ) { $stored_mappings = array(); }
+        }
+        if ( isset( $stored_mappings[ $portal_key ] ) ) {
+            $stored_mappings[ $portal_key ]['access_token']  = $refresh_data['access_token'];
+            $stored_mappings[ $portal_key ]['token_expires'] = time() + (int) ( $refresh_data['expires_in'] ?? 7200 );
+            if ( ! empty( $refresh_data['refresh_token'] ) ) {
+                $stored_mappings[ $portal_key ]['refresh_token']         = $refresh_data['refresh_token'];
+                $stored_mappings[ $portal_key ]['refresh_token_expires'] = time() + (int) ( $refresh_data['refresh_token_expires_in'] ?? 7776000 );
+            }
+            $options['mappings'] = wp_json_encode( $stored_mappings );
+            update_option( 'post_forwarding_options', $options );
+        }
+
+        // Use the fresh token for this request.
+        $mapping['access_token'] = $refresh_data['access_token'];
+        post_forwarder_log_error( 'X token refreshed successfully for portal: ' . $portal_key );
+    }
+
+    $post_url = get_permalink( $post->ID );
+
+    // Tweets are limited to 280 characters. t.co wraps all URLs to ~23 chars.
+    // Reserve 25 chars for "\n\n" + URL placeholder; title gets the remaining 255.
+    $max_title = 255;
+    $title     = mb_strlen( $post->post_title ) > $max_title
+        ? mb_substr( $post->post_title, 0, $max_title - 1 ) . '…'
+        : $post->post_title;
+
+    $tweet_text = $title . "\n\n" . $post_url;
+
+    $x_post_args = array(
+        'headers' => array(
+            'Authorization' => 'Bearer ' . $mapping['access_token'],
+            'Content-Type'  => 'application/json',
+        ),
+        'body'    => wp_json_encode( array( 'text' => $tweet_text ) ),
+        'timeout' => 30,
+    );
+
+    $response = wp_remote_post( 'https://api.twitter.com/2/tweets', $x_post_args );
+
+    if ( is_wp_error( $response ) ) {
+        $msg = $response->get_error_message();
+        post_forwarder_log_error( 'X post failed (WP_Error): ' . $msg );
+        return array('success' => false, 'message' => $msg);
+    }
+
+    $code = wp_remote_retrieve_response_code( $response );
+    $body = wp_remote_retrieve_body( $response );
+
+    // On 401, X may have invalidated the token early (before our local expiry).
+    // Try to refresh immediately and retry once.
+    if ( 401 === $code && ! empty( $mapping['refresh_token'] ) ) {
+        $relay_url = post_forwarder_relay_url();
+        if ( $relay_url ) {
+            post_forwarder_log_error( 'X got 401 — attempting token refresh for portal: ' . $portal_key );
+            $refresh_response = wp_remote_post(
+                $relay_url . '/x/refresh',
+                array(
+                    'headers' => array( 'Content-Type' => 'application/json' ),
+                    'body'    => wp_json_encode( array( 'refresh_token' => $mapping['refresh_token'] ) ),
+                    'timeout' => 20,
+                )
+            );
+            if ( ! is_wp_error( $refresh_response ) ) {
+                $refresh_data = json_decode( wp_remote_retrieve_body( $refresh_response ), true );
+                $refresh_code = wp_remote_retrieve_response_code( $refresh_response );
+                if ( 200 === $refresh_code && ! empty( $refresh_data['access_token'] ) ) {
+                    // Persist new tokens.
+                    $opts = get_option( 'post_forwarding_options', array() );
+                    if ( is_string( $opts ) ) { $opts = json_decode( $opts, true ); }
+                    if ( ! is_array( $opts ) ) { $opts = array(); }
+                    $sm = isset( $opts['mappings'] ) ? $opts['mappings'] : array();
+                    if ( ! is_array( $sm ) ) { $sm = json_decode( is_string( $sm ) ? $sm : '{}', true ); }
+                    if ( ! is_array( $sm ) ) { $sm = array(); }
+                    if ( isset( $sm[ $portal_key ] ) ) {
+                        $sm[ $portal_key ]['access_token']  = $refresh_data['access_token'];
+                        $sm[ $portal_key ]['token_expires'] = time() + (int) ( $refresh_data['expires_in'] ?? 7200 );
+                        if ( ! empty( $refresh_data['refresh_token'] ) ) {
+                            $sm[ $portal_key ]['refresh_token']         = $refresh_data['refresh_token'];
+                            $sm[ $portal_key ]['refresh_token_expires'] = time() + (int) ( $refresh_data['refresh_token_expires_in'] ?? 7776000 );
+                        }
+                        $opts['mappings'] = wp_json_encode( $sm );
+                        update_option( 'post_forwarding_options', $opts );
+                    }
+                    post_forwarder_log_error( 'X token refreshed on 401, retrying post for portal: ' . $portal_key );
+                    $x_post_args['headers']['Authorization'] = 'Bearer ' . $refresh_data['access_token'];
+                    $response = wp_remote_post( 'https://api.twitter.com/2/tweets', $x_post_args );
+                    if ( ! is_wp_error( $response ) ) {
+                        $code = wp_remote_retrieve_response_code( $response );
+                        $body = wp_remote_retrieve_body( $response );
+                    }
+                } else {
+                    $rf_err = is_array( $refresh_data ) && isset( $refresh_data['error'] ) ? $refresh_data['error'] : 'HTTP ' . $refresh_code;
+                    post_forwarder_log_error( 'X token refresh on 401 failed: ' . $rf_err . ' — reconnect needed.' );
+                    return array('success' => false, 'message' => 'Access denied (401) and token refresh failed (' . $rf_err . ') — please reconnect your X account.');
+                }
+            }
+        }
+    }
+
+    if ( $code >= 200 && $code < 300 ) {
+        $body_data = json_decode( $body, true );
+        $tweet_id  = is_array( $body_data ) && isset( $body_data['data']['id'] ) ? $body_data['data']['id'] : '';
+        $msg       = $tweet_id
+            ? sprintf( 'Tweet posted: https://x.com/i/web/status/%s', $tweet_id )
+            : __( 'Tweet posted successfully.', 'post-forwarder' );
+        post_forwarder_log_error( 'X post succeeded (HTTP ' . $code . ')' . ( $tweet_id ? ': tweet ID ' . $tweet_id : '' ) );
+        return array('success' => true, 'message' => $msg);
+    }
+
+    post_forwarder_log_error( 'X post failed (HTTP ' . $code . '): ' . $body );
+    $err_data = json_decode( $body, true );
+    if ( is_array( $err_data ) ) {
+        // X API v2 error format: {"detail":"...","errors":[{"message":"..."}]}
+        $err_msg = ! empty( $err_data['detail'] ) ? $err_data['detail']
+            : ( ! empty( $err_data['errors'][0]['message'] ) ? $err_data['errors'][0]['message'] : 'HTTP ' . $code );
+    } else {
+        $err_msg = 'HTTP ' . $code;
+    }
+    return array('success' => false, 'message' => $err_msg);
 }
 
 // Helper function to upload and set featured image
@@ -1346,7 +2262,8 @@ function post_forward_post($post_id) {
     }
 
     $forwarding_successful = false;
-    $successful_portals = array();
+    $successful_portals    = array();
+    $portal_results        = array();
 
     // Loop through each selected product and send to corresponding portal
     foreach ($xproducts as $xproduct) {
@@ -1356,36 +2273,74 @@ function post_forward_post($post_id) {
 
         $target      = $mappings[$xproduct];
         $target_type = isset($target['type']) ? $target['type'] : 'wordpress';
+        $portal_name = isset($target['name']) ? $target['name'] : $xproduct;
 
         // Route to LinkedIn if this is a LinkedIn account
         if ($target_type === 'linkedin') {
-            $success = post_forwarder_forward_to_linkedin($post, $target);
-            if ($success) {
+            $result = post_forwarder_forward_to_linkedin($post, $target);
+            $portal_results[$xproduct] = array(
+                'name'    => $portal_name,
+                'type'    => 'linkedin',
+                'success' => $result['success'],
+                'message' => $result['message'],
+            );
+            if ($result['success']) {
                 $forwarding_successful = true;
                 $successful_portals[]  = $xproduct;
             }
             continue;
         }
 
-        // WordPress portal forwarding
-        // Determine the correct REST API endpoint based on post type
-        if ($original_post_type === 'post') {
-            $api_url = rtrim($target['url'], '/') . '/wp-json/wp/v2/posts';
-        } else {
-            // For custom post types, use the post type name in the endpoint
-            $api_url = rtrim($target['url'], '/') . '/wp-json/wp/v2/' . $original_post_type;
+        // Route to X (Twitter) if this is an X account
+        if ( $target_type === 'x' ) {
+            $result = post_forwarder_forward_to_x( $post, $target, $xproduct );
+            $portal_results[$xproduct] = array(
+                'name'    => $portal_name,
+                'type'    => 'x',
+                'success' => $result['success'],
+                'message' => $result['message'],
+            );
+            if ( $result['success'] ) {
+                $forwarding_successful = true;
+                $successful_portals[]  = $xproduct;
+            }
+            continue;
         }
-        
+
+        // WordPress portal forwarding.
+        // Use wp_site_url (stored during OAuth connect) for the REST API base — this is the
+        // real WordPress install path, which may differ from the home URL in subdirectory setups.
+        $wp_api_base = ! empty( $target['wp_site_url'] )
+            ? rtrim( $target['wp_site_url'], '/' )
+            : rtrim( $target['url'], '/' );
+
+        if ($original_post_type === 'post') {
+            $api_url = $wp_api_base . '/wp-json/wp/v2/posts';
+        } else {
+            $api_url = $wp_api_base . '/wp-json/wp/v2/' . $original_post_type;
+        }
+
+        post_forwarder_log_error( 'WordPress forward starting: post ' . $post_id . ' → ' . $api_url );
+
         $auth = base64_encode($target['user'] . ':' . $target['password']);
 
         // Try with term slugs first (better chance of matching existing terms)
         $success = post_forward_attempt_with_term_slugs($post, $api_url, $auth, $taxonomy_data, $meta_flattened, $options, $original_post_type, $target, $featured_image_url, $xproduct);
-        
+
         if (!$success) {
             // If that fails, try with just tags as fallback
             $success = post_forward_attempt_with_fallback_tags($post, $api_url, $auth, $fallback_tags, $meta_flattened, $options, $original_post_type, $target, $featured_image_url, $xproduct);
         }
-        
+
+        $portal_results[$xproduct] = array(
+            'name'    => $portal_name,
+            'type'    => 'wordpress',
+            'success' => $success,
+            'message' => $success
+                ? sprintf( __( 'Post forwarded to %s', 'post-forwarder' ), wp_parse_url( $target['url'], PHP_URL_HOST ) )
+                : __( 'Forwarding failed — check the debug log for details.', 'post-forwarder' ),
+        );
+
         if ($success) {
             $forwarding_successful = true;
             $successful_portals[] = $xproduct;
@@ -1397,9 +2352,44 @@ function post_forward_post($post_id) {
         set_transient($recent_forward_key, true, 300); // 5 minutes
     }
 
+    // Store per-portal results for display on the post edit screen after redirect.
+    if ( ! empty( $portal_results ) ) {
+        set_transient( 'pf_forward_results_' . get_current_user_id() . '_' . $post_id, $portal_results, 120 );
+    }
+
     // Clean up the transients at the end
     delete_transient($lock_key);
     delete_transient($processing_key);
+}
+
+// Resolve term slugs to integer IDs on the target WordPress site.
+// The WP REST API requires integer term IDs for categories/tags, not slugs.
+function post_forwarder_resolve_term_ids( $wp_api_base, $auth, $rest_endpoint, $slugs, $sslverify ) {
+    if ( empty( $slugs ) ) {
+        return array();
+    }
+    $response = wp_remote_get(
+        rtrim( $wp_api_base, '/' ) . '/wp-json/wp/v2/' . $rest_endpoint . '?' . http_build_query( array( 'slug' => $slugs, 'per_page' => 100 ) ),
+        array(
+            'headers'   => array( 'Authorization' => 'Basic ' . $auth ),
+            'timeout'   => 10,
+            'sslverify' => $sslverify,
+        )
+    );
+    if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
+        return array();
+    }
+    $terms = json_decode( wp_remote_retrieve_body( $response ), true );
+    if ( ! is_array( $terms ) ) {
+        return array();
+    }
+    $ids = array();
+    foreach ( $terms as $term ) {
+        if ( isset( $term['id'] ) ) {
+            $ids[] = (int) $term['id'];
+        }
+    }
+    return $ids;
 }
 
 // Helper function to attempt forwarding with term slugs
@@ -1412,33 +2402,38 @@ function post_forward_attempt_with_term_slugs($post, $api_url, $auth, $taxonomy_
         'status'  => $post_status
     );
 
-    // Add taxonomies using term slugs
+    // Resolve term slugs to integer IDs on the target site (WP REST API requires integers).
+    $sslverify  = apply_filters( 'post_forwarder_sslverify', true );
+    $wp_api_base = ! empty( $target['wp_site_url'] ) ? rtrim( $target['wp_site_url'], '/' ) : rtrim( $target['url'], '/' );
+
     foreach ($taxonomy_data as $taxonomy_name => $taxonomy_info) {
         if (!isset($taxonomy_info['terms']) || empty($taxonomy_info['terms'])) {
             continue;
         }
-        
-        // Extract slugs from terms
+
         $term_slugs = array();
         foreach ($taxonomy_info['terms'] as $term) {
             $term_slugs[] = $term['slug'];
         }
-        
-        // Map common taxonomies to their REST API fields
-        if ($taxonomy_name === 'category') {
-            $body['categories'] = $term_slugs;
-        } elseif ($taxonomy_name === 'post_tag') {
-            $body['tags'] = $term_slugs;
-        } elseif ($taxonomy_name === 'custom-tag') {
-            // Map custom-tag to tags
-            if (isset($body['tags'])) {
-                $body['tags'] = array_merge($body['tags'], $term_slugs);
-            } else {
-                $body['tags'] = $term_slugs;
+
+        if ( $taxonomy_name === 'category' ) {
+            $ids = post_forwarder_resolve_term_ids( $wp_api_base, $auth, 'categories', $term_slugs, $sslverify );
+            if ( ! empty( $ids ) ) {
+                $body['categories'] = $ids;
+            }
+        } elseif ( $taxonomy_name === 'post_tag' || $taxonomy_name === 'custom-tag' ) {
+            $ids = post_forwarder_resolve_term_ids( $wp_api_base, $auth, 'tags', $term_slugs, $sslverify );
+            if ( ! empty( $ids ) ) {
+                $body['tags'] = isset( $body['tags'] )
+                    ? array_values( array_unique( array_merge( $body['tags'], $ids ) ) )
+                    : $ids;
             }
         } else {
-            // Try to include other taxonomies as-is (they might exist on destination)
-            $body[$taxonomy_name] = $term_slugs;
+            // Custom taxonomy — look up via its own REST endpoint (slug = taxonomy name).
+            $ids = post_forwarder_resolve_term_ids( $wp_api_base, $auth, sanitize_key( $taxonomy_name ), $term_slugs, $sslverify );
+            if ( ! empty( $ids ) ) {
+                $body[ $taxonomy_name ] = $ids;
+            }
         }
     }
 
@@ -1447,49 +2442,57 @@ function post_forward_attempt_with_term_slugs($post, $api_url, $auth, $taxonomy_
         $body['meta'] = $meta_flattened;
     }
 
-    $response = wp_remote_post($api_url, array(
-        'headers' => array(
+    $request_args = array(
+        'headers'   => array(
             'Authorization' => 'Basic ' . $auth,
             'Content-Type'  => 'application/json',
         ),
-        'body' => wp_json_encode($body),
-        'timeout' => 30
-    ));
+        'body'      => wp_json_encode( $body ),
+        'timeout'   => 30,
+        'sslverify' => apply_filters( 'post_forwarder_sslverify', true ),
+    );
 
-    $response_code = wp_remote_retrieve_response_code($response);
-    $response_body = wp_remote_retrieve_body($response);
+    $response = wp_remote_post( $api_url, $request_args );
 
-    // If custom post type endpoint returns 404, try with the posts endpoint
-    if ($response_code === 404 && $original_post_type !== 'post') {
-        $fallback_url = rtrim($target['url'], '/') . '/wp-json/wp/v2/posts';
-        $body_with_type = $body;
-        $body_with_type['type'] = $original_post_type;
-        
-        $response = wp_remote_post($fallback_url, array(
-            'headers' => array(
-                'Authorization' => 'Basic ' . $auth,
-                'Content-Type'  => 'application/json',
-            ),
-            'body' => wp_json_encode($body_with_type),
-            'timeout' => 30
-        ));
-
-        $response_code = wp_remote_retrieve_response_code($response);
-        $response_body = wp_remote_retrieve_body($response);
-        $api_url = $fallback_url; // For logging
+    if ( is_wp_error( $response ) ) {
+        post_forwarder_log_error( 'WordPress forward failed (WP_Error): ' . $response->get_error_message() . ' — URL: ' . $api_url );
+        return false;
     }
 
-    if ($response_code >= 200 && $response_code < 300) {
-        if ($featured_image_url) {
-            $created_post = json_decode($response_body, true);
-            if (isset($created_post['id'])) {
-                $remote_post_id = $created_post['id'];
-                post_forwarder_set_featured_image($remote_post_id, $featured_image_url, $target, $original_post_type);
+    $response_code = wp_remote_retrieve_response_code( $response );
+    $response_body = wp_remote_retrieve_body( $response );
+
+    // If custom post type endpoint returns 404, try with the posts endpoint.
+    if ( $response_code === 404 && $original_post_type !== 'post' ) {
+        $wp_api_base    = ! empty( $target['wp_site_url'] ) ? rtrim( $target['wp_site_url'], '/' ) : rtrim( $target['url'], '/' );
+        $fallback_url   = $wp_api_base . '/wp-json/wp/v2/posts';
+        $body_with_type = $body;
+        $body_with_type['type'] = $original_post_type;
+
+        $response = wp_remote_post( $fallback_url, array_merge( $request_args, array( 'body' => wp_json_encode( $body_with_type ) ) ) );
+
+        if ( is_wp_error( $response ) ) {
+            post_forwarder_log_error( 'WordPress forward fallback failed (WP_Error): ' . $response->get_error_message() );
+            return false;
+        }
+
+        $response_code = wp_remote_retrieve_response_code( $response );
+        $response_body = wp_remote_retrieve_body( $response );
+        $api_url       = $fallback_url;
+    }
+
+    if ( $response_code >= 200 && $response_code < 300 ) {
+        post_forwarder_log_error( 'WordPress forward succeeded (HTTP ' . $response_code . '): ' . $api_url );
+        if ( $featured_image_url ) {
+            $created_post = json_decode( $response_body, true );
+            if ( isset( $created_post['id'] ) ) {
+                post_forwarder_set_featured_image( $created_post['id'], $featured_image_url, $target, $original_post_type );
             }
         }
         return true;
     }
 
+    post_forwarder_log_error( 'WordPress forward failed (HTTP ' . $response_code . '): ' . substr( $response_body, 0, 300 ) . ' — URL: ' . $api_url );
     return false;
 }
 
@@ -1503,59 +2506,64 @@ function post_forward_attempt_with_fallback_tags($post, $api_url, $auth, $fallba
         'status'  => $post_status
     );
 
-    // Only add tags as fallback
-    if (!empty($fallback_tags)) {
-        $body['tags'] = $fallback_tags;
-    }
+    // Taxonomy is intentionally omitted in the fallback — the primary attempt already tried
+    // resolving term IDs and failed for a different reason, so keep this request minimal.
 
     // Add meta if there are any
     if (!empty($meta_flattened)) {
         $body['meta'] = $meta_flattened;
     }
 
-    $response = wp_remote_post($api_url, array(
-        'headers' => array(
+    $request_args = array(
+        'headers'   => array(
             'Authorization' => 'Basic ' . $auth,
             'Content-Type'  => 'application/json',
         ),
-        'body' => wp_json_encode($body),
-        'timeout' => 30
-    ));
+        'body'      => wp_json_encode( $body ),
+        'timeout'   => 30,
+        'sslverify' => apply_filters( 'post_forwarder_sslverify', true ),
+    );
 
-    $response_code = wp_remote_retrieve_response_code($response);
-    $response_body = wp_remote_retrieve_body($response);
+    $response = wp_remote_post( $api_url, $request_args );
 
-    // If custom post type endpoint returns 404, try with the posts endpoint
-    if ($response_code === 404 && $original_post_type !== 'post') {
-        $fallback_url = rtrim($target['url'], '/') . '/wp-json/wp/v2/posts';
-        $body_with_type = $body;
-        $body_with_type['type'] = $original_post_type;
-        
-        $response = wp_remote_post($fallback_url, array(
-            'headers' => array(
-                'Authorization' => 'Basic ' . $auth,
-                'Content-Type'  => 'application/json',
-            ),
-            'body' => wp_json_encode($body_with_type),
-            'timeout' => 30
-        ));
-
-        $response_code = wp_remote_retrieve_response_code($response);
-        $response_body = wp_remote_retrieve_body($response);
-        $api_url = $fallback_url; // For logging
+    if ( is_wp_error( $response ) ) {
+        post_forwarder_log_error( 'WordPress forward (fallback tags) failed (WP_Error): ' . $response->get_error_message() . ' — URL: ' . $api_url );
+        return false;
     }
 
-    if ($response_code >= 200 && $response_code < 300) {
-        if ($featured_image_url) {
-            $created_post = json_decode($response_body, true);
-            if (isset($created_post['id'])) {
-                $remote_post_id = $created_post['id'];
-                post_forwarder_set_featured_image($remote_post_id, $featured_image_url, $target, $original_post_type);
+    $response_code = wp_remote_retrieve_response_code( $response );
+    $response_body = wp_remote_retrieve_body( $response );
+
+    if ( $response_code === 404 && $original_post_type !== 'post' ) {
+        $wp_api_base    = ! empty( $target['wp_site_url'] ) ? rtrim( $target['wp_site_url'], '/' ) : rtrim( $target['url'], '/' );
+        $fallback_url   = $wp_api_base . '/wp-json/wp/v2/posts';
+        $body_with_type = $body;
+        $body_with_type['type'] = $original_post_type;
+
+        $response = wp_remote_post( $fallback_url, array_merge( $request_args, array( 'body' => wp_json_encode( $body_with_type ) ) ) );
+
+        if ( is_wp_error( $response ) ) {
+            post_forwarder_log_error( 'WordPress forward (fallback tags/CPT) failed (WP_Error): ' . $response->get_error_message() );
+            return false;
+        }
+
+        $response_code = wp_remote_retrieve_response_code( $response );
+        $response_body = wp_remote_retrieve_body( $response );
+        $api_url       = $fallback_url;
+    }
+
+    if ( $response_code >= 200 && $response_code < 300 ) {
+        post_forwarder_log_error( 'WordPress forward (fallback tags) succeeded (HTTP ' . $response_code . '): ' . $api_url );
+        if ( $featured_image_url ) {
+            $created_post = json_decode( $response_body, true );
+            if ( isset( $created_post['id'] ) ) {
+                post_forwarder_set_featured_image( $created_post['id'], $featured_image_url, $target, $original_post_type );
             }
         }
         return true;
     }
 
+    post_forwarder_log_error( 'WordPress forward (fallback tags) failed (HTTP ' . $response_code . '): ' . substr( $response_body, 0, 300 ) . ' — URL: ' . $api_url );
     return false;
 }
 
