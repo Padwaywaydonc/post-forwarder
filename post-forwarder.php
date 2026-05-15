@@ -274,6 +274,20 @@ add_action('admin_init', function () {
                         $portals[ $key ][ $token_field ] = $existing_mappings_for_save[ $key ][ $token_field ];
                     }
                 }
+            } elseif ( $type === 'meta' ) {
+                $portals[ $key ] = array(
+                    'type'              => 'meta',
+                    'name'              => sanitize_text_field( $portal['name'] ),
+                    'app_id'            => sanitize_text_field( isset( $portal['app_id'] )     ? $portal['app_id']     : '' ),
+                    'app_secret'        => sanitize_text_field( isset( $portal['app_secret'] ) ? $portal['app_secret'] : '' ),
+                    'post_to_facebook'  => ! empty( $portal['post_to_facebook'] ),
+                    'post_to_instagram' => ! empty( $portal['post_to_instagram'] ),
+                );
+                foreach ( array( 'access_token', 'page_id', 'page_name', 'instagram_account_id', 'meta_auth_mode', 'pending_pages', 'last_error' ) as $pf ) {
+                    if ( isset( $existing_mappings_for_save[ $key ][ $pf ] ) ) {
+                        $portals[ $key ][ $pf ] = $existing_mappings_for_save[ $key ][ $pf ];
+                    }
+                }
             } else {
                 if ( empty( $portal['url'] ) ) {
                     continue;
