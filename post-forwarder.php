@@ -3268,6 +3268,16 @@ register_activation_hook(__FILE__, function() {
     }
 });
 
+// Ensure the schedule table exists on every load if it hasn't been created yet.
+add_action( 'plugins_loaded', function () {
+    if ( get_option( 'pf_schedule_db_version' ) !== '1.0' ) {
+        post_forwarder_create_schedule_table();
+    }
+    if ( ! wp_next_scheduled( 'post_forwarder_run_schedule' ) ) {
+        wp_schedule_event( time(), 'pf_every_minute', 'post_forwarder_run_schedule' );
+    }
+} );
+
 // Plugin deactivation hook
 register_deactivation_hook(__FILE__, function() {
     // Use WordPress option deletion instead of direct database queries
