@@ -1028,6 +1028,29 @@ function post_forwarder_calendar_page() {
     $settings_url = admin_url( 'admin.php?page=post-forwarder-settings' );
     $rest_url     = rest_url( 'post-forwarder/v1/' );
     $rest_nonce   = wp_create_nonce( 'wp_rest' );
+
+    // Pre-load current week's schedule from PHP so the grid renders immediately without a JS fetch.
+    $pf_today_utc  = gmdate( 'Y-m-d' );
+    $pf_week_start = $pf_today_utc;
+    $pf_week_end   = gmdate( 'Y-m-d', strtotime( $pf_today_utc . ' +6 days' ) );
+    global $wpdb;
+    $pf_table = $wpdb->prefix . 'pf_schedule';
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+    $pf_initial_rows = $wpdb->get_results( $wpdb->prepare(
+        "SELECT * FROM {$pf_table} WHERE scheduled_at BETWEEN %s AND %s ORDER BY scheduled_at ASC",
+        $pf_week_start . ' 00:00:00',
+        $pf_week_end   . ' 23:59:59'
+    ), ARRAY_A ) ?: array();
+    foreach ( $pf_initial_rows as &$pf_r ) {
+        $pf_r['channel_keys'] = json_decode( $pf_r['channel_keys'], true );
+        $pf_r['result']       = json_decode( $pf_r['result'], true );
+        if ( $pf_r['post_id'] ) {
+            $pf_p = get_post( (int) $pf_r['post_id'] );
+            $pf_r['post_title'] = $pf_p ? $pf_p->post_title : '';
+            $pf_r['post_url']   = $pf_p ? get_permalink( $pf_p ) : '';
+        }
+    }
+    unset( $pf_r );
     ?>
     <div class="pf-cal-root">
         <style>
