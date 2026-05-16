@@ -1603,7 +1603,12 @@ function post_forwarder_calendar_page() {
         document.getElementById('pf-delete-btn').addEventListener('click', deleteItem);
         document.querySelectorAll('.pf-mode-tab').forEach(function(tab){tab.addEventListener('click',function(){setMode(this.dataset.mode);});});
         document.querySelectorAll('.pf-channel-check').forEach(function(lbl){
-            lbl.addEventListener('click', function(){var cb=this.querySelector('input');cb.checked=!cb.checked;this.classList.toggle('checked',cb.checked);});
+            lbl.addEventListener('click', function(e){
+                e.preventDefault(); // stop browser from auto-toggling the input a second time
+                var cb = this.querySelector('input');
+                cb.checked = !cb.checked;
+                this.classList.toggle('checked', cb.checked);
+            });
         });
         document.getElementById('pf-post-search').addEventListener('input', function(){
             clearTimeout(searchTimer);
