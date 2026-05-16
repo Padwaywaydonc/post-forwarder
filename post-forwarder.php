@@ -1815,7 +1815,7 @@ function post_forwarding_settings_page() {
             var n = portalCount;
             var liCredFields = liCredsFromConstants ? '' :
                 '<tr class="fields-linkedin" style="display:none;"><th><?php echo esc_js( __( 'Client ID', 'post-forwarder' ) ); ?></th><td><input type="text" name="portals[' + n + '][client_id]" style="width: 300px;" /></td></tr>' +
-                '<tr class="fields-linkedin" style="display:none;"><th><?php echo esc_js( __( 'Client Secret', 'post-forwarder' ) ); ?></th><td><input type="text" name="portals[' + n + '][client_secret]" style="width: 300px;" /></td></tr>' +
+                '<tr class="fields-linkedin" style="display:none;"><th><?php echo esc_js( __( 'Client Secret', 'post-forwarder' ) ); ?></th><td><input type="password" name="portals[' + n + '][client_secret]" style="width: 300px;" /></td></tr>' +
                 '<tr class="fields-linkedin" style="display:none;"><th><?php echo esc_js( __( 'Author URN', 'post-forwarder' ) ); ?></th><td><input type="text" name="portals[' + n + '][author_urn]" placeholder="urn:li:person:XXXX or urn:li:organization:XXXX" style="width: 420px;" /></td></tr>';
             var newPortal =
                 '<div class="portal-row" style="border: 1px solid #ddd; padding: 15px; margin-bottom: 10px;" data-type="wordpress">' +
