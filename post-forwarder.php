@@ -1516,6 +1516,52 @@ function post_forwarder_calendar_page() {
             clearTimeout(searchTimer);
             searchTimer = setTimeout(function(){loadPosts(document.getElementById('pf-post-search').value);}, 300);
         });
+
+        // Thumbnail upload for new-content mode.
+        document.getElementById('pf-thumb-label').addEventListener('click', function(){
+            document.getElementById('pf-new-thumb-file').click();
+        });
+        document.getElementById('pf-new-thumb-file').addEventListener('change', function(){
+            var file = this.files[0];
+            if (!file) return;
+            var hint = document.getElementById('pf-thumb-hint');
+            hint.textContent = '<?php echo esc_js( __( 'Uploading…', 'post-forwarder' ) ); ?>';
+            hint.className = 'pf-thumb-uploading';
+            var fd = new FormData();
+            fd.append('file', file);
+            fd.append('title', file.name);
+            fetch('<?php echo esc_js( rest_url( 'wp/v2/media' ) ); ?>', {
+                method: 'POST',
+                headers: { 'X-WP-Nonce': REST_NONCE },
+                body: fd,
+            }).then(function(r){ return r.json(); }).then(function(media){
+                if (media.source_url) {
+                    document.getElementById('pf-new-thumb-url').value = media.source_url;
+                    var img = document.getElementById('pf-thumb-preview');
+                    img.src = media.source_url;
+                    img.style.display = 'block';
+                    hint.textContent = file.name;
+                    hint.className = '';
+                    document.getElementById('pf-thumb-clear').style.display = '';
+                } else {
+                    hint.textContent = '<?php echo esc_js( __( 'Upload failed. Try again.', 'post-forwarder' ) ); ?>';
+                    hint.className = '';
+                }
+            }).catch(function(){
+                hint.textContent = '<?php echo esc_js( __( 'Upload failed. Try again.', 'post-forwarder' ) ); ?>';
+                hint.className = '';
+            });
+        });
+        document.getElementById('pf-thumb-clear').addEventListener('click', function(){
+            document.getElementById('pf-new-thumb-file').value = '';
+            document.getElementById('pf-new-thumb-url').value = '';
+            document.getElementById('pf-thumb-preview').style.display = 'none';
+            document.getElementById('pf-thumb-preview').src = '';
+            document.getElementById('pf-thumb-hint').textContent = '<?php echo esc_js( __( 'Click to choose image…', 'post-forwarder' ) ); ?>';
+            document.getElementById('pf-thumb-hint').className = '';
+            this.style.display = 'none';
+        });
+
         document.addEventListener('keydown', function(e){if(e.key==='Escape')closeModal();});
 
         loadWeek();
