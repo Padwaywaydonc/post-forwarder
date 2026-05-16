@@ -1101,6 +1101,13 @@ function post_forwarder_calendar_page() {
         .pf-delete-btn { background:none; border:1px solid #d63638; color:#d63638; border-radius:4px; padding:7px 14px; cursor:pointer; font-size:13px; transition:all .15s; }
         .pf-delete-btn:hover { background:#d63638; color:#fff; }
         .pf-loading { text-align:center; padding:40px; color:#50575e; }
+        /* Thumbnail upload */
+        .pf-thumb-wrap { display:flex; flex-direction:column; gap:6px; }
+        .pf-thumb-label { display:block; border:2px dashed #c3c4c7; border-radius:4px; padding:12px; text-align:center; cursor:pointer; transition:border-color .15s; color:#50575e; font-size:13px; }
+        .pf-thumb-label:hover { border-color:#2271b1; color:#2271b1; }
+        .pf-thumb-clear { background:none; border:none; color:#d63638; font-size:12px; cursor:pointer; padding:0; text-align:left; }
+        .pf-thumb-clear:hover { text-decoration:underline; }
+        .pf-thumb-uploading { color:#2271b1; font-size:12px; }
         </style>
 
     <?php
