@@ -3306,4 +3306,6 @@ register_deactivation_hook(__FILE__, function() {
         delete_transient('post_forwarding_lock_' . $post_id);
         delete_transient('post_forwarded_' . $post_id);
     }
+
+    wp_clear_scheduled_hook( 'post_forwarder_run_schedule' );
 });
