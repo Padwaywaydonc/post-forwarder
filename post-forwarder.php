@@ -2913,56 +2913,38 @@ function post_forwarding_settings_page() {
             $(this).closest('.portal-row').remove();
         });
 
+        function pfGetPortalKey($row) {
+            // Existing portal: hidden key input. New portal: derive from name at save time.
+            var hidden = $row.find('input[type="hidden"][name$="[key]"]').val();
+            return hidden ? $.trim(hidden) : '';
+        }
+
         $(document).on('click', '.save-and-connect-linkedin', function() {
-            var $row  = $(this).closest('.portal-row');
-            var key   = $.trim($row.find('input[name$="[key]"]').val());
-            var name  = $.trim($row.find('input[name$="[name]"]').val());
-            if (!key) {
-                alert('<?php echo esc_js( __( 'Please enter an Account Key first.', 'post-forwarder' ) ); ?>');
-                return;
-            }
-            if (!name) {
-                alert('<?php echo esc_js( __( 'Please enter an Account Name first.', 'post-forwarder' ) ); ?>');
-                return;
-            }
-            $('input[name="pending_linkedin_connect"]').val(key);
+            var $row = $(this).closest('.portal-row');
+            var key  = pfGetPortalKey($row);
+            var name = $.trim($row.find('input[name$="[name]"]').val());
+            if (!name) { alert('<?php echo esc_js( __( 'Please enter an Account Name first.', 'post-forwarder' ) ); ?>'); return; }
+            $('input[name="pending_linkedin_connect"]').val(key || name);
             $row.closest('form').find('input[name="submit_portals"]').click();
         });
 
         $(document).on('click', '.save-and-connect-x', function() {
-            var $row  = $(this).closest('.portal-row');
-            var key   = $.trim($row.find('input[name$="[key]"]').val());
-            var name  = $.trim($row.find('input[name$="[name]"]').val());
-            if (!key) {
-                alert('<?php echo esc_js( __( 'Please enter an Account Key first.', 'post-forwarder' ) ); ?>');
-                return;
-            }
-            if (!name) {
-                alert('<?php echo esc_js( __( 'Please enter an Account Name first.', 'post-forwarder' ) ); ?>');
-                return;
-            }
-            $('input[name="pending_x_connect"]').val(key);
+            var $row = $(this).closest('.portal-row');
+            var key  = pfGetPortalKey($row);
+            var name = $.trim($row.find('input[name$="[name]"]').val());
+            if (!name) { alert('<?php echo esc_js( __( 'Please enter an Account Name first.', 'post-forwarder' ) ); ?>'); return; }
+            $('input[name="pending_x_connect"]').val(key || name);
             $row.closest('form').find('input[name="submit_portals"]').click();
         });
 
         $(document).on('click', '.save-and-connect-wp', function() {
             var $row = $(this).closest('.portal-row');
-            var key  = $.trim($row.find('input[name$="[key]"]').val());
+            var key  = pfGetPortalKey($row);
             var name = $.trim($row.find('input[name$="[name]"]').val());
             var url  = $.trim($row.find('input[name$="[url]"]').val());
-            if (!key) {
-                alert('<?php echo esc_js( __( 'Please enter an Account Key first.', 'post-forwarder' ) ); ?>');
-                return;
-            }
-            if (!name) {
-                alert('<?php echo esc_js( __( 'Please enter an Account Name first.', 'post-forwarder' ) ); ?>');
-                return;
-            }
-            if (!url) {
-                alert('<?php echo esc_js( __( 'Please enter the WordPress site URL first.', 'post-forwarder' ) ); ?>');
-                return;
-            }
-            $('input[name="pending_wp_connect"]').val(key);
+            if (!name) { alert('<?php echo esc_js( __( 'Please enter an Account Name first.', 'post-forwarder' ) ); ?>'); return; }
+            if (!url)  { alert('<?php echo esc_js( __( 'Please enter the WordPress site URL first.', 'post-forwarder' ) ); ?>'); return; }
+            $('input[name="pending_wp_connect"]').val(key || name);
             $row.closest('form').find('input[name="submit_portals"]').click();
         });
 
@@ -2974,11 +2956,10 @@ function post_forwarding_settings_page() {
 
         $(document).on('click', '.save-and-connect-meta', function() {
             var $row = $(this).closest('.portal-row');
-            var key  = $.trim($row.find('input[name$="[key]"]').val());
+            var key  = pfGetPortalKey($row);
             var name = $.trim($row.find('input[name$="[name]"]').val());
-            if (!key)  { alert('<?php echo esc_js( __( 'Please enter an Account Key first.', 'post-forwarder' ) ); ?>'); return; }
             if (!name) { alert('<?php echo esc_js( __( 'Please enter an Account Name first.', 'post-forwarder' ) ); ?>'); return; }
-            $('input[name="pending_meta_connect"]').val(key);
+            $('input[name="pending_meta_connect"]').val(key || name);
             $row.closest('form').find('input[name="submit_portals"]').click();
         });
 
