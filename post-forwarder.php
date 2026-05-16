@@ -1602,7 +1602,8 @@ function post_forwarder_calendar_page() {
 
         document.addEventListener('keydown', function(e){if(e.key==='Escape')closeModal();});
 
-        loadWeek();
+        // Defer past current JS execution to ensure WordPress admin is fully initialised.
+        setTimeout(loadWeek, 0);
     })();
     </script>
     <?php
