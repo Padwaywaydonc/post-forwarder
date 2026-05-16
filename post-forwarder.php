@@ -1327,6 +1327,7 @@ function post_forwarding_settings_page() {
             <input type="hidden" name="pending_linkedin_connect" value="">
             <input type="hidden" name="pending_x_connect" value="">
             <input type="hidden" name="pending_wp_connect" value="">
+            <input type="hidden" name="pending_meta_connect" value="">
             
             <div id="portals-container">
 
