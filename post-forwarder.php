@@ -1410,7 +1410,8 @@ function post_forwarder_calendar_page() {
             });
 
             if (item) {
-                var dt = new Date(item.scheduled_at.replace(' ','T'));
+                // scheduled_at is stored in UTC — convert to local for the datetime-local input.
+                var dt = new Date(item.scheduled_at.replace(' ','T') + 'Z');
                 document.getElementById('pf-scheduled-at').value = fmtDate(dt)+'T'+pad(dt.getHours())+':'+pad(dt.getMinutes());
                 if (item.post_id) {
                     setMode('existing');
