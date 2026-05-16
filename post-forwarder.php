@@ -3498,7 +3498,7 @@ function post_forwarder_set_featured_image($remote_post_id, $image_url, $target,
 }
 
 // Meta (Facebook + Instagram) post forwarding.
-function post_forwarder_forward_to_meta( $post, $mapping ) {
+function post_forwarder_forward_to_meta( $post, $mapping, $fallback_image_url = null ) {
     if ( empty( $mapping['access_token'] ) || empty( $mapping['page_id'] ) ) {
         return array( 'success' => false, 'message' => __( 'Not connected — please authorize with Meta first.', 'post-forwarder' ) );
     }
@@ -3527,6 +3527,10 @@ function post_forwarder_forward_to_meta( $post, $mapping ) {
     if ( $thumb_id ) {
         $img_src = wp_get_attachment_image_src( $thumb_id, 'full' );
         $img_url = $img_src ? $img_src[0] : null;
+    }
+    // Fall back to the URL stored in the schedule row (for calendar-created posts).
+    if ( ! $img_url && $fallback_image_url ) {
+        $img_url = $fallback_image_url;
     }
 
     $results = array();
