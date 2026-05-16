@@ -193,6 +193,102 @@ function post_forwarder_log_error( $message ) {
 }
 
 /**
+ * Create (or upgrade) the schedule DB table.
+ */
+function post_forwarder_create_schedule_table() {
+    global $wpdb;
+    $table           = $wpdb->prefix . 'pf_schedule';
+    $charset_collate = $wpdb->get_charset_collate();
+    $sql = "CREATE TABLE $table (
+        id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+        post_id bigint(20) UNSIGNED DEFAULT NULL,
+        title text NOT NULL DEFAULT '',
+        content longtext NOT NULL DEFAULT '',
+        excerpt text NOT NULL DEFAULT '',
+        image_url text NOT NULL DEFAULT '',
+        channel_keys text NOT NULL DEFAULT '[]',
+        scheduled_at datetime NOT NULL,
+        status varchar(20) NOT NULL DEFAULT 'pending',
+        result text NOT NULL DEFAULT '{}',
+        created_at datetime NOT NULL,
+        PRIMARY KEY (id),
+        KEY pf_scheduled_at (scheduled_at),
+        KEY pf_status (status)
+    ) $charset_collate;";
+    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+    dbDelta( $sql );
+    update_option( 'pf_schedule_db_version', '1.0' );
+}
+
+// Custom cron interval.
+add_filter( 'cron_schedules', function ( $schedules ) {
+    if ( ! isset( $schedules['pf_every_minute'] ) ) {
+        $schedules['pf_every_minute'] = array(
+            'interval' => 60,
+            'display'  => __( 'Every Minute (Post Forwarder)', 'post-forwarder' ),
+        );
+    }
+    return $schedules;
+} );
+
+// Execute scheduled items.
+add_action( 'post_forwarder_run_schedule', 'post_forwarder_execute_schedule' );
+
+function post_forwarder_execute_schedule() {
+    global $wpdb;
+    $table = $wpdb->prefix . 'pf_schedule';
+
+    // phpcs:disable WordPress.DB.DirectDatabaseQuery
+    $due = $wpdb->get_results(
+        $wpdb->prepare(
+            "SELECT * FROM {$table} WHERE status = 'pending' AND scheduled_at <= %s ORDER BY scheduled_at ASC LIMIT 10",
+            current_time( 'mysql' )
+        )
+    );
+
+    foreach ( $due as $item ) {
+        $wpdb->update( $table, array( 'status' => 'processing' ), array( 'id' => $item->id ) );
+
+        $channel_keys = json_decode( $item->channel_keys, true );
+        if ( ! is_array( $channel_keys ) ) {
+            $channel_keys = array();
+        }
+
+        $post_id = (int) $item->post_id;
+
+        // New content with no existing post: publish a new WP post.
+        if ( ! $post_id && ( $item->title || $item->content ) ) {
+            $new_id = wp_insert_post( array(
+                'post_title'   => $item->title,
+                'post_content' => $item->content,
+                'post_excerpt' => $item->excerpt,
+                'post_status'  => 'publish',
+            ) );
+            if ( $new_id && ! is_wp_error( $new_id ) ) {
+                $post_id = $new_id;
+                $wpdb->update( $table, array( 'post_id' => $post_id ), array( 'id' => $item->id ) );
+            }
+        } elseif ( $post_id ) {
+            $existing = get_post( $post_id );
+            if ( $existing && 'draft' === $existing->post_status ) {
+                wp_publish_post( $post_id );
+            }
+        }
+
+        $results = array();
+        if ( $post_id && ! is_wp_error( $post_id ) ) {
+            $results = post_forwarder_schedule_forward( $post_id, $channel_keys );
+        }
+
+        $wpdb->update( $table, array(
+            'status' => 'sent',
+            'result' => wp_json_encode( $results ),
+        ), array( 'id' => $item->id ) );
+    }
+    // phpcs:enable
+}
+
+/**
  * Return a copy of the mappings array with sensitive values replaced by '***' for display.
  */
 function post_forwarder_mask_mappings( $mappings ) {
