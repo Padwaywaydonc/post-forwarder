@@ -178,6 +178,25 @@ function post_forwarder_relay_url() {
     return '';
 }
 
+function post_forwarder_channel_connected( array $m ) {
+    $type = isset( $m['type'] ) ? $m['type'] : 'wordpress';
+    switch ( $type ) {
+        case 'linkedin':
+            return ! empty( $m['access_token'] )
+                && ( empty( $m['token_expires'] ) || $m['token_expires'] > time() );
+        case 'x':
+            return (bool) post_forwarder_relay_url()
+                && ! empty( $m['access_token'] )
+                && ( empty( $m['token_expires'] ) || $m['token_expires'] > time() );
+        case 'meta':
+            return ! empty( $m['access_token'] ) && ! empty( $m['page_id'] );
+        case 'wordpress':
+            return ! empty( $m['user'] ) && ! empty( $m['password'] );
+        default:
+            return false;
+    }
+}
+
 /**
  * Log a message to the PHP error log.
  *
