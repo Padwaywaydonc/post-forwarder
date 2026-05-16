@@ -2873,7 +2873,6 @@ function post_forwarding_settings_page() {
                 '<option value="x"><?php echo esc_js( __( 'X (Twitter) Account', 'post-forwarder' ) ); ?></option>' +
                 '<option value="meta"><?php echo esc_js( __( 'Meta (Facebook + Instagram)', 'post-forwarder' ) ); ?></option>' +
                 '</select></td></tr>' +
-                '<tr><th><?php echo esc_js( __( 'Account Key', 'post-forwarder' ) ); ?></th><td><input type="text" name="portals[' + n + '][key]" placeholder="<?php echo esc_js( __( 'e.g., portal1', 'post-forwarder' ) ); ?>" style="width: 200px;" /></td></tr>' +
                 '<tr><th><?php echo esc_js( __( 'Account Name', 'post-forwarder' ) ); ?></th><td><input type="text" name="portals[' + n + '][name]" placeholder="<?php echo esc_js( __( 'e.g., My Account', 'post-forwarder' ) ); ?>" style="width: 300px;" /></td></tr>' +
                 '<tr class="fields-wordpress"><th><?php echo esc_js( __( 'URL', 'post-forwarder' ) ); ?></th><td><input type="url" name="portals[' + n + '][url]" placeholder="https://example.com" style="width: 400px;" /></td></tr>' +
                 '<tr class="fields-wordpress"><th><?php echo esc_js( __( 'Connection', 'post-forwarder' ) ); ?></th><td>' +
