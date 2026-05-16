@@ -1406,6 +1406,9 @@ function post_forwarder_calendar_page() {
             apiFetch('GET', 'schedule?week_start='+fmtDate(currentStart)).then(function(data) {
                 scheduleItems = Array.isArray(data) ? data : [];
                 renderGrid();
+            }).catch(function() {
+                scheduleItems = [];
+                renderGrid();
             });
         }
 
