@@ -598,6 +598,187 @@ add_action( 'rest_api_init', function () {
     ) );
 } );
 
+// Calendar schedule REST endpoints.
+add_action( 'rest_api_init', function () {
+    $perm = function () { return current_user_can( 'manage_options' ); };
+
+    // GET /schedule?week_start=YYYY-MM-DD
+    register_rest_route( 'post-forwarder/v1', '/schedule', array(
+        'methods'             => 'GET',
+        'permission_callback' => $perm,
+        'callback'            => function ( WP_REST_Request $req ) {
+            global $wpdb;
+            $table = $wpdb->prefix . 'pf_schedule';
+            $week  = sanitize_text_field( $req->get_param( 'week_start' ) ?: date( 'Y-m-d', strtotime( 'monday this week' ) ) );
+            $start = date( 'Y-m-d 00:00:00', strtotime( $week ) );
+            $end   = date( 'Y-m-d 23:59:59', strtotime( $week . ' +6 days' ) );
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            $rows  = $wpdb->get_results( $wpdb->prepare(
+                "SELECT * FROM {$table} WHERE scheduled_at BETWEEN %s AND %s ORDER BY scheduled_at ASC",
+                $start, $end
+            ), ARRAY_A );
+            foreach ( $rows as &$r ) {
+                $r['channel_keys'] = json_decode( $r['channel_keys'], true );
+                $r['result']       = json_decode( $r['result'], true );
+                if ( $r['post_id'] ) {
+                    $p = get_post( (int) $r['post_id'] );
+                    $r['post_title'] = $p ? $p->post_title : '';
+                    $r['post_url']   = $p ? get_permalink( $p ) : '';
+                }
+            }
+            unset( $r );
+            return rest_ensure_response( $rows );
+        },
+    ) );
+
+    // POST /schedule — create
+    register_rest_route( 'post-forwarder/v1', '/schedule', array(
+        'methods'             => 'POST',
+        'permission_callback' => $perm,
+        'callback'            => function ( WP_REST_Request $req ) {
+            global $wpdb;
+            $table        = $wpdb->prefix . 'pf_schedule';
+            $post_id      = (int) ( $req->get_param( 'post_id' ) ?: 0 );
+            $title        = sanitize_text_field( $req->get_param( 'title' ) ?: '' );
+            $content      = wp_kses_post( $req->get_param( 'content' ) ?: '' );
+            $excerpt      = sanitize_text_field( $req->get_param( 'excerpt' ) ?: '' );
+            $image_url    = esc_url_raw( $req->get_param( 'image_url' ) ?: '' );
+            $channel_keys = $req->get_param( 'channel_keys' ) ?: array();
+            $scheduled_at = sanitize_text_field( $req->get_param( 'scheduled_at' ) ?: '' );
+
+            if ( ! $scheduled_at ) {
+                return new WP_Error( 'missing_date', 'scheduled_at is required', array( 'status' => 400 ) );
+            }
+            if ( empty( $channel_keys ) ) {
+                return new WP_Error( 'missing_channels', 'At least one channel is required', array( 'status' => 400 ) );
+            }
+
+            // If linking an existing post, fill title/excerpt from it.
+            if ( $post_id ) {
+                $p = get_post( $post_id );
+                if ( $p ) {
+                    $title   = $title ?: $p->post_title;
+                    $excerpt = $excerpt ?: $p->post_excerpt;
+                    if ( ! $image_url ) {
+                        $tid = get_post_thumbnail_id( $post_id );
+                        if ( $tid ) {
+                            $src       = wp_get_attachment_image_src( $tid, 'medium' );
+                            $image_url = $src ? $src[0] : '';
+                        }
+                    }
+                }
+            }
+
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            $wpdb->insert( $table, array(
+                'post_id'      => $post_id ?: null,
+                'title'        => $title,
+                'content'      => $content,
+                'excerpt'      => $excerpt,
+                'image_url'    => $image_url,
+                'channel_keys' => wp_json_encode( array_values( (array) $channel_keys ) ),
+                'scheduled_at' => date( 'Y-m-d H:i:s', strtotime( $scheduled_at ) ),
+                'status'       => 'pending',
+                'result'       => '{}',
+                'created_at'   => current_time( 'mysql' ),
+            ) );
+
+            $id  = $wpdb->insert_id;
+            $row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $id ), ARRAY_A );
+            $row['channel_keys'] = json_decode( $row['channel_keys'], true );
+            $row['result']       = json_decode( $row['result'], true );
+            return rest_ensure_response( $row );
+        },
+    ) );
+
+    // PUT /schedule/{id} — update
+    register_rest_route( 'post-forwarder/v1', '/schedule/(?P<id>\d+)', array(
+        'methods'             => 'PUT',
+        'permission_callback' => $perm,
+        'callback'            => function ( WP_REST_Request $req ) {
+            global $wpdb;
+            $table = $wpdb->prefix . 'pf_schedule';
+            $id    = (int) $req->get_param( 'id' );
+            $data  = array();
+
+            if ( null !== $req->get_param( 'scheduled_at' ) ) {
+                $data['scheduled_at'] = date( 'Y-m-d H:i:s', strtotime( sanitize_text_field( $req->get_param( 'scheduled_at' ) ) ) );
+            }
+            if ( null !== $req->get_param( 'channel_keys' ) ) {
+                $data['channel_keys'] = wp_json_encode( array_values( (array) $req->get_param( 'channel_keys' ) ) );
+            }
+            if ( null !== $req->get_param( 'title' ) ) {
+                $data['title'] = sanitize_text_field( $req->get_param( 'title' ) );
+            }
+            if ( null !== $req->get_param( 'content' ) ) {
+                $data['content'] = wp_kses_post( $req->get_param( 'content' ) );
+            }
+
+            if ( $data ) {
+                // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+                $wpdb->update( $table, $data, array( 'id' => $id ) );
+            }
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            $row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $id ), ARRAY_A );
+            if ( ! $row ) {
+                return new WP_Error( 'not_found', 'Schedule item not found', array( 'status' => 404 ) );
+            }
+            $row['channel_keys'] = json_decode( $row['channel_keys'], true );
+            $row['result']       = json_decode( $row['result'], true );
+            return rest_ensure_response( $row );
+        },
+    ) );
+
+    // DELETE /schedule/{id}
+    register_rest_route( 'post-forwarder/v1', '/schedule/(?P<id>\d+)', array(
+        'methods'             => 'DELETE',
+        'permission_callback' => $perm,
+        'callback'            => function ( WP_REST_Request $req ) {
+            global $wpdb;
+            $table = $wpdb->prefix . 'pf_schedule';
+            $id    = (int) $req->get_param( 'id' );
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            $wpdb->delete( $table, array( 'id' => $id ) );
+            return rest_ensure_response( array( 'deleted' => true ) );
+        },
+    ) );
+
+    // GET /posts?s=search — search WP posts for the picker
+    register_rest_route( 'post-forwarder/v1', '/posts', array(
+        'methods'             => 'GET',
+        'permission_callback' => $perm,
+        'callback'            => function ( WP_REST_Request $req ) {
+            $search = sanitize_text_field( $req->get_param( 's' ) ?: '' );
+            $posts  = get_posts( array(
+                'post_status'    => array( 'publish', 'draft', 'future' ),
+                'posts_per_page' => 20,
+                's'              => $search,
+                'orderby'        => 'date',
+                'order'          => 'DESC',
+            ) );
+            $out = array();
+            foreach ( $posts as $p ) {
+                $img  = '';
+                $tid  = get_post_thumbnail_id( $p->ID );
+                if ( $tid ) {
+                    $src = wp_get_attachment_image_src( $tid, 'thumbnail' );
+                    $img = $src ? $src[0] : '';
+                }
+                $out[] = array(
+                    'id'         => $p->ID,
+                    'title'      => $p->post_title,
+                    'status'     => $p->post_status,
+                    'date'       => $p->post_date,
+                    'excerpt'    => wp_trim_words( $p->post_excerpt ?: $p->post_content, 20 ),
+                    'image_url'  => $img,
+                    'permalink'  => get_permalink( $p->ID ),
+                );
+            }
+            return rest_ensure_response( $out );
+        },
+    ) );
+} );
+
 // Enqueue Gutenberg save-listener on post edit screens.
 add_action( 'admin_enqueue_scripts', function ( $hook ) {
     if ( ! in_array( $hook, array( 'post.php', 'post-new.php' ), true ) ) {
