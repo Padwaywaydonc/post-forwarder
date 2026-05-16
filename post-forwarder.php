@@ -1375,7 +1375,7 @@ function post_forwarder_calendar_page() {
                 html += '<div class="pf-day-header' + (isToday ? ' today' : '') + '">' + DAY_NAMES[day.getDay()] + '<span class="pf-day-num">' + day.getDate() + '</span></div>';
             }
             for (var h = START_HOUR; h <= END_HOUR; h++) {
-                var label = h < 12 ? h+' AM' : h === 12 ? '12 PM' : (h-12)+' PM';
+                var label = h === 0 ? '12 AM' : h < 12 ? h+' AM' : h === 12 ? '12 PM' : (h-12)+' PM';
                 html += '<div class="pf-time-col">' + label + '</div>';
                 for (var dc = 0; dc < 7; dc++) {
                     html += '<div class="pf-slot" data-datetime="' + fmtDate(addDays(currentStart, dc)) + 'T' + pad(h) + ':00"></div>';
