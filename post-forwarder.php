@@ -3506,9 +3506,12 @@ function post_forwarder_forward_to_meta( $post, $mapping ) {
     $page_id    = $mapping['page_id'];
     $ig_id      = isset( $mapping['instagram_account_id'] ) ? $mapping['instagram_account_id'] : '';
     $post_url   = get_permalink( $post->ID );
-    $message    = ! empty( $post->post_excerpt )
+    $body_text  = ! empty( $post->post_excerpt )
         ? $post->post_excerpt
         : wp_trim_words( wp_strip_all_tags( $post->post_content ), 60 );
+    $message    = ! empty( $post->post_title )
+        ? $post->post_title . "\n\n" . $body_text
+        : $body_text;
 
     // Determine if site URL is publicly reachable by Meta's servers.
     $parsed_host = wp_parse_url( $post_url, PHP_URL_HOST );
