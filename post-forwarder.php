@@ -1359,6 +1359,9 @@ function post_forwarder_calendar_page() {
     (function() {
         var REST_URL      = <?php echo wp_json_encode( $rest_url ); ?>;
         var REST_NONCE    = <?php echo wp_json_encode( $rest_nonce ); ?>;
+        var AJAX_URL      = <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
+        var AJAX_NONCE    = <?php echo wp_json_encode( wp_create_nonce( 'pf_add_channel' ) ); ?>;
+        var SETTINGS_URL  = <?php echo wp_json_encode( admin_url( 'admin.php?page=post-forwarder-settings' ) ); ?>;
         var CHANNELS      = <?php echo wp_json_encode( $channels_js ); ?>;
         var INITIAL_ITEMS = <?php echo wp_json_encode( array_values( $pf_initial_rows ) ); ?>;
         var DAY_NAMES  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
