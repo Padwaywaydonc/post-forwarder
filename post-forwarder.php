@@ -209,11 +209,29 @@ function post_forwarder_mask_mappings( $mappings ) {
 
 // Register settings
 add_action('admin_menu', function () {
-    add_options_page(
-        __('Post Forwarding', 'post-forwarder'),
-        __('Post Forwarding', 'post-forwarder'),
+    add_menu_page(
+        __('Post Forwarder', 'post-forwarder'),
+        __('Post Forwarder', 'post-forwarder'),
         'manage_options',
-        'post-forwarding',
+        'post-forwarder',
+        'post_forwarder_calendar_page',
+        'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M3 4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4zm0 6a1 1 0 0 1 1-1h12a1 1 0 0 1 0 2H4a1 1 0 0 1-1-1zm0 4a1 1 0 0 1 1-1h7a1 1 0 0 1 0 2H4a1 1 0 0 1-1-1z"/></svg>'),
+        30
+    );
+    add_submenu_page(
+        'post-forwarder',
+        __('Calendar', 'post-forwarder'),
+        __('Calendar', 'post-forwarder'),
+        'manage_options',
+        'post-forwarder',
+        'post_forwarder_calendar_page'
+    );
+    add_submenu_page(
+        'post-forwarder',
+        __('Settings', 'post-forwarder'),
+        __('Settings', 'post-forwarder'),
+        'manage_options',
+        'post-forwarder-settings',
         'post_forwarding_settings_page'
     );
 });
