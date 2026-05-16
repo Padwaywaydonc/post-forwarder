@@ -337,7 +337,7 @@ add_action('admin_menu', function () {
         'manage_options',
         'post-forwarder',
         'post_forwarder_calendar_page',
-        'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><rect x="5" y="5" width="8" height="1" rx=".5"/><path d="M5.8 3.5h6.4L13 5H5z"/><circle cx="9" cy="8" r="2"/><path d="M5.5 10A1.5 1.5 0 0 1 7 8.5h4A1.5 1.5 0 0 1 12.5 10v4.5H5.5z"/><rect x="6.5" y="14.5" width="2" height="4" rx=".5"/><rect x="9.5" y="14.5" width="2" height="4" rx=".5"/><rect x="13" y="10" width="6.5" height="5" rx=".5"/><path d="M13 10.3 16.25 13l3.25-2.7V10H13z" fill-opacity=".3"/></svg>'),
+        'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>'),
         30
     );
     add_submenu_page(
