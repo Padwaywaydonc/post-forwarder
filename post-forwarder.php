@@ -1322,7 +1322,7 @@ function post_forwarder_calendar_page() {
 
         function placeItems() {
             scheduleItems.forEach(function(item) {
-                var dt = new Date(item.scheduled_at.replace(' ','T'));
+                var dt = new Date(item.scheduled_at.replace(' ','T') + 'Z'); // stored UTC
                 var dayIdx = Math.round((new Date(fmtDate(dt)).getTime() - currentMonday.getTime()) / 86400000);
                 if (dayIdx < 0 || dayIdx > 6) return;
                 var h = dt.getHours(), m = dt.getMinutes();
