@@ -1766,7 +1766,139 @@ function post_forwarder_calendar_page() {
             this.style.display = 'none';
         });
 
-        document.addEventListener('keydown', function(e){if(e.key==='Escape')closeModal();});
+        document.addEventListener('keydown', function(e){if(e.key==='Escape'){closeModal();closeChModal();}});
+
+        // ── Add Channel modal ─────────────────────────────────────────────
+        var selectedChType = 'wordpress';
+        var chManualMode   = false;
+
+        function openChModal() {
+            selectedChType = 'wordpress';
+            chManualMode   = false;
+            document.getElementById('pf-ch-name').value = '';
+            document.getElementById('pf-ch-wp-url').value = '';
+            document.getElementById('pf-ch-wp-user').value = '';
+            document.getElementById('pf-ch-wp-pass').value = '';
+            document.getElementById('pf-ch-wp-manual').style.display = 'none';
+            document.getElementById('pf-ch-msg').style.display = 'none';
+            document.querySelectorAll('.pf-type-btn').forEach(function(b){ b.classList.toggle('selected', b.dataset.type === 'wordpress'); });
+            document.getElementById('pf-ch-wp-section').style.display = '';
+            document.getElementById('pf-ch-social-section').style.display = 'none';
+            document.getElementById('pf-ch-save').textContent = '<?php echo esc_js( __( 'Save & Connect', 'post-forwarder' ) ); ?>';
+            document.getElementById('pf-ch-overlay').classList.add('open');
+            document.getElementById('pf-ch-name').focus();
+        }
+        function closeChModal() {
+            document.getElementById('pf-ch-overlay').classList.remove('open');
+        }
+        function setChType(type) {
+            selectedChType = type;
+            chManualMode   = false;
+            document.querySelectorAll('.pf-type-btn').forEach(function(b){ b.classList.toggle('selected', b.dataset.type === type); });
+            document.getElementById('pf-ch-wp-section').style.display = (type === 'wordpress') ? '' : 'none';
+            document.getElementById('pf-ch-social-section').style.display = (type !== 'wordpress') ? '' : 'none';
+            document.getElementById('pf-ch-wp-manual').style.display = 'none';
+            document.getElementById('pf-ch-save').textContent = '<?php echo esc_js( __( 'Save & Connect', 'post-forwarder' ) ); ?>';
+        }
+        function saveChannel() {
+            var name = document.getElementById('pf-ch-name').value.trim();
+            var url  = document.getElementById('pf-ch-wp-url').value.trim();
+            var user = document.getElementById('pf-ch-wp-user').value.trim();
+            var pass = document.getElementById('pf-ch-wp-pass').value.trim();
+            var msg  = document.getElementById('pf-ch-msg');
+            msg.style.display = 'none';
+
+            if (!name) { msg.style.display=''; msg.style.color='#d63638'; msg.textContent='<?php echo esc_js( __( 'Please enter a channel name.', 'post-forwarder' ) ); ?>'; return; }
+            if (selectedChType === 'wordpress' && !url) { msg.style.display=''; msg.style.color='#d63638'; msg.textContent='<?php echo esc_js( __( 'Please enter the site URL.', 'post-forwarder' ) ); ?>'; return; }
+
+            var btn = document.getElementById('pf-ch-save');
+            btn.disabled = true;
+            btn.textContent = '<?php echo esc_js( __( 'Saving…', 'post-forwarder' ) ); ?>';
+
+            var fd = new FormData();
+            fd.append('action',   'pf_add_channel');
+            fd.append('nonce',    AJAX_NONCE);
+            fd.append('name',     name);
+            fd.append('type',     selectedChType);
+            fd.append('url',      url);
+            fd.append('user',     user);
+            fd.append('password', pass);
+
+            fetch(AJAX_URL, { method: 'POST', body: fd })
+                .then(function(r){ return r.json(); })
+                .then(function(res) {
+                    btn.disabled = false;
+                    btn.textContent = '<?php echo esc_js( __( 'Save & Connect', 'post-forwarder' ) ); ?>';
+                    if (!res.success) {
+                        msg.style.display=''; msg.style.color='#d63638';
+                        msg.textContent = res.data && res.data.message ? res.data.message : '<?php echo esc_js( __( 'An error occurred.', 'post-forwarder' ) ); ?>';
+                        return;
+                    }
+                    var ch = res.data;
+                    // Add to CHANNELS so new posts can target it.
+                    CHANNELS.push({ key: ch.key, name: ch.name, type: ch.type, color: ch.color, badge: ch.badge, connected: ch.connected });
+                    // Add to sidebar list.
+                    var letter = ch.name.charAt(0).toUpperCase();
+                    var li = document.createElement('li');
+                    li.className = 'pf-channel-item';
+                    li.innerHTML = '<div class="pf-channel-item-top">'
+                        + '<span class="pf-avatar" style="background:'+ch.color+';">'+escHtml(letter)
+                        + '<span class="pf-platform-badge" style="background:'+ch.color+';filter:brightness(.7);">'+escHtml(ch.badge)+'</span></span>'
+                        + '<div class="pf-channel-info"><div class="pf-channel-name">'+escHtml(ch.name)+'</div>'
+                        + '<div class="pf-channel-status"><span class="pf-status-dot disconnected"></span>'
+                        + '<span class="pf-status-text"><?php echo esc_js( __( 'Not connected', 'post-forwarder' ) ); ?></span></div></div></div>';
+                    // Insert before the "Add channel" list item.
+                    var addBtn = document.querySelector('.pf-add-ch-item');
+                    addBtn.parentNode.insertBefore(li, addBtn);
+                    // Add checkbox to schedule modal channel grid.
+                    var grid = document.querySelector('.pf-channels-grid');
+                    if (grid) {
+                        var lbl = document.createElement('label');
+                        lbl.className = 'pf-channel-check';
+                        lbl.dataset.key = ch.key;
+                        lbl.innerHTML = '<input type="checkbox" value="'+escHtml(ch.key)+'">'
+                            + '<span class="pf-avatar" style="background:'+ch.color+';width:26px;height:26px;font-size:10px;">'+escHtml(letter)
+                            + '<span class="pf-platform-badge" style="background:'+ch.color+';filter:brightness(.7);">'+escHtml(ch.badge)+'</span></span>'
+                            + '<span class="pf-channel-check-name">'+escHtml(ch.name)+'</span>';
+                        lbl.addEventListener('click', function(e){
+                            e.preventDefault();
+                            var cb = this.querySelector('input');
+                            cb.checked = !cb.checked;
+                            this.classList.toggle('checked', cb.checked);
+                        });
+                        grid.appendChild(lbl);
+                    }
+                    // Remove "No channels" placeholder if present.
+                    var noChEl = document.querySelector('.pf-no-channels');
+                    if (noChEl) noChEl.remove();
+                    closeChModal();
+                    // Redirect to OAuth/auth flow if URL returned.
+                    if (ch.oauth_url) { window.location.href = ch.oauth_url; }
+                })
+                .catch(function() {
+                    btn.disabled = false;
+                    btn.textContent = '<?php echo esc_js( __( 'Save & Connect', 'post-forwarder' ) ); ?>';
+                    msg.style.display=''; msg.style.color='#d63638';
+                    msg.textContent = '<?php echo esc_js( __( 'Request failed. Please try again.', 'post-forwarder' ) ); ?>';
+                });
+        }
+
+        document.getElementById('pf-add-channel-btn').addEventListener('click', openChModal);
+        document.getElementById('pf-ch-close').addEventListener('click', closeChModal);
+        document.getElementById('pf-ch-cancel').addEventListener('click', closeChModal);
+        document.getElementById('pf-ch-overlay').addEventListener('click', function(e){ if(e.target===this) closeChModal(); });
+        document.getElementById('pf-ch-save').addEventListener('click', saveChannel);
+        document.querySelectorAll('.pf-type-btn').forEach(function(btn){
+            btn.addEventListener('click', function(){ setChType(this.dataset.type); });
+        });
+        document.getElementById('pf-ch-wp-manual-toggle').addEventListener('click', function(e){
+            e.preventDefault();
+            chManualMode = !chManualMode;
+            document.getElementById('pf-ch-wp-manual').style.display = chManualMode ? '' : 'none';
+            this.textContent = chManualMode
+                ? '<?php echo esc_js( __( 'Use one-click connect instead', 'post-forwarder' ) ); ?>'
+                : '<?php echo esc_js( __( 'Enter credentials manually instead', 'post-forwarder' ) ); ?>';
+        });
 
         // Fire after all WP admin footer scripts have executed, so nothing can reset our DOM.
         function initCalendar() { loadWeek(); }
