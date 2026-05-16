@@ -1901,6 +1901,16 @@ function post_forwarding_settings_page() {
                     ? '<button type="button" class="button save-and-connect-x" style="background:#000;border-color:#000;color:#fff;">&#10132; <?php echo esc_js( __( 'Save &amp; Connect with X', 'post-forwarder' ) ); ?></button>'
                     : '<span style="color:#666;"><?php echo esc_js( __( 'X connection requires the relay. Configure POST_FORWARDER_RELAY_URL first.', 'post-forwarder' ) ); ?></span>'
                 ) + '</td></tr>' +
+                '<tr class="fields-meta" style="display:none;"><th><?php echo esc_js( __( 'App ID', 'post-forwarder' ) ); ?></th><td><input type="text" name="portals[' + n + '][app_id]" placeholder="<?php echo esc_js( __( 'Meta App ID', 'post-forwarder' ) ); ?>" style="width:240px;" /></td></tr>' +
+                '<tr class="fields-meta" style="display:none;"><th><?php echo esc_js( __( 'App Secret', 'post-forwarder' ) ); ?></th><td><input type="text" name="portals[' + n + '][app_secret]" placeholder="<?php echo esc_js( __( 'Meta App Secret', 'post-forwarder' ) ); ?>" style="width:300px;" /></td></tr>' +
+                '<tr class="fields-meta" style="display:none;"><th><?php echo esc_js( __( 'Post to', 'post-forwarder' ) ); ?></th><td>' +
+                '<label><input type="checkbox" name="portals[' + n + '][post_to_facebook]" value="1" checked> <?php echo esc_js( __( 'Facebook Page', 'post-forwarder' ) ); ?></label>&nbsp;&nbsp;' +
+                '<label><input type="checkbox" name="portals[' + n + '][post_to_instagram]" value="1" checked> <?php echo esc_js( __( 'Instagram', 'post-forwarder' ) ); ?></label>' +
+                '</td></tr>' +
+                '<tr class="fields-meta" style="display:none;"><th><?php echo esc_js( __( 'Connection', 'post-forwarder' ) ); ?></th><td>' +
+                '<button type="button" class="button save-and-connect-meta" style="background:#1877f2;border-color:#1877f2;color:#fff;">&#10132; <?php echo esc_js( __( 'Save &amp; Connect with Meta', 'post-forwarder' ) ); ?></button>' +
+                '<p class="description" style="margin-top:6px;"><?php echo esc_js( __( 'Redirects to Facebook to authorize. App ID and Secret must be saved first.', 'post-forwarder' ) ); ?></p>' +
+                '</td></tr>' +
                 '</table>' +
                 '<button type="button" class="button test-connection" style="margin-right: 8px;"><?php echo esc_js( __( 'Test Connection', 'post-forwarder' ) ); ?></button>' +
                 '<span class="connection-result" style="font-weight: 600;"></span>' +
