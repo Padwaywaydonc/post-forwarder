@@ -1637,8 +1637,13 @@ function post_forwarder_calendar_page() {
 
         document.addEventListener('keydown', function(e){if(e.key==='Escape')closeModal();});
 
-        // Render initial week from PHP-preloaded data — no fetch needed on first paint.
-        safeRenderGrid();
+        // Fire after all WP admin footer scripts have executed, so nothing can reset our DOM.
+        function initCalendar() { loadWeek(); }
+        if (document.readyState === 'complete') {
+            initCalendar();
+        } else {
+            window.addEventListener('load', initCalendar);
+        }
     })();
     </script>
     <?php
