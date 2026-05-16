@@ -1,97 +1,152 @@
 === Post Forwarder ===
 Contributors: sylwesterulatowski
-Tags: post, forward, sync, multisite, rest-api
-Requires at least: 5.0
+Tags: post, forward, sync, linkedin, twitter, x, facebook, instagram, meta, social media, syndication
+Requires at least: 5.6
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 2.1.0
+Stable tag: 3.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Forward posts to multiple WordPress sites via REST API with taxonomy mapping, featured image support, and duplicate prevention.
+Forward WordPress posts to multiple WordPress sites, LinkedIn, X (Twitter), and Meta (Facebook + Instagram) automatically on publish.
 
 == Description ==
 
-Post Forwarder is a powerful WordPress plugin that allows you to automatically forward posts to multiple WordPress sites using the REST API. Perfect for content syndication, multi-site networks, or distributing content across related websites.
+Post Forwarder lets you syndicate content from one WordPress site to any combination of destinations with a single click at publish time. Configure as many portals as you need and choose per-post which ones receive each article.
 
-**Key Features:**
+**Supported Destinations**
 
-* **Multi-Portal Support**: Configure multiple destination WordPress sites
-* **Taxonomy Intelligence**: Automatically maps custom taxonomies or falls back to regular tags
-* **Featured Image Transfer**: Uploads and sets featured images on destination sites
-* **Custom Post Type Support**: Works with any public post type
-* **Duplicate Prevention**: Smart locking mechanism prevents duplicate posts
-* **ACF Integration**: Transfers Advanced Custom Fields data
-* **Flexible Configuration**: Easy-to-use interface or advanced JSON configuration
-* **Selective Forwarding**: Choose which portals to forward each post to
-* **Draft or Publish**: Configure whether forwarded posts are published or saved as drafts
+* **WordPress sites** — forwards via REST API with taxonomy mapping, featured image upload, ACF fields, and duplicate prevention. One-click authorization using WordPress Application Passwords (5.6+), or enter credentials manually.
+* **LinkedIn** — posts as a link share with excerpt and featured image. Supports personal profiles and organisation pages. Authorized via OAuth through the relay server.
+* **X (Twitter)** — posts a text thread with the post URL. Authorized via OAuth 2.0 through the relay server.
+* **Meta (Facebook + Instagram)** — posts to a Facebook Page feed (with image attachment) and/or an Instagram Business profile. Authorized via Facebook OAuth through the relay server.
 
-**How It Works:**
+**Relay Server**
 
-1. Configure your destination WordPress sites (portals) with their REST API credentials
-2. When editing a post, select which portals to forward the post to
-3. Upon saving, the plugin automatically forwards the post with all its content, taxonomies, meta fields, and featured image
-4. Smart taxonomy mapping tries to preserve custom taxonomies, falling back to regular tags if needed
+LinkedIn, X, and Meta require a relay server (a small Cloudflare Worker) that holds your OAuth app credentials so they never appear in the WordPress admin. The relay is open-source and you deploy your own instance — see the Installation section.
 
-**Perfect For:**
+== Platform Requirements & Limitations ==
 
-* News networks with multiple websites
-* Content syndication between related sites
-* Multi-brand companies sharing content
-* Blog networks and content distribution
-* Development/staging to production workflows
+Read this section before configuring each portal type to avoid unexpected errors.
 
-**Technical Requirements:**
+= WordPress =
 
-* WordPress REST API enabled on destination sites
-* Application passwords configured for API access
-* PHP 7.4 or higher
+* The destination site must run WordPress 5.6+ with the REST API enabled (default).
+* The "Save & Connect with WordPress" button uses the built-in Application Password authorization flow. Older sites that do not support this can still be connected by entering a username and Application Password manually.
+* The connecting user must have at least the Editor role on the destination site.
+
+= LinkedIn =
+
+* A relay server must be configured (`POST_FORWARDER_RELAY_URL` constant or the Relay URL setting).
+* Your LinkedIn Developer app needs the **w_member_social** and **openid / profile** products approved.
+* LinkedIn access tokens expire after **60 days**. The plugin shows the expiry date and prompts you to reconnect when needed.
+* For organization page posts the Author URN must be set to `urn:li:organization:YOUR_ORG_ID`, and the app needs the **Community Management API** product approved by LinkedIn.
+
+= X (Twitter) =
+
+* A relay server must be configured.
+* **A paid X API subscription is required.** The free tier does not allow writing posts. The Basic plan ($100/month at time of writing) is the minimum tier that grants write access.
+* X access tokens obtained via OAuth 2.0 with `offline.access` scope are **long-lived** (they do not expire after 2 hours). The relay automatically refreshes them in the background when they near expiry.
+* If you see a "no credits" or billing error when forwarding, your X developer account needs an active paid plan — this is an X platform requirement that the plugin cannot work around.
+
+= Meta (Facebook + Instagram) =
+
+**Facebook:**
+
+* You must have a **Facebook Page** that you administer. Posting to personal Facebook profiles via the API is not supported by Meta and has not been possible since 2018. There is no workaround.
+* A relay server must be configured.
+* Your Meta Developer app must have the following permissions activated under Use Cases: `pages_show_list`, `pages_read_engagement`, `pages_manage_posts`.
+* During development, only users who are listed as admins, developers, or testers of the Meta app can authorize. To allow any user to connect, the app must go through Meta App Review.
+* Page access tokens obtained through the OAuth flow are **long-lived** (they do not expire on a short schedule like user tokens do).
+
+**Instagram:**
+
+* Your Instagram account must be a **Professional account** (Business or Creator), not a personal account. You can switch in the Instagram app under Settings → Account → Switch to Professional Account.
+* The Instagram account must be **linked to a Facebook Page** that you manage. This is done in Facebook Page Settings → Instagram.
+* Instagram posting via the API only works for Professional accounts linked to a Page. Personal Instagram accounts cannot receive posts via the API.
+* Your Meta Developer app must have `instagram_basic` and `instagram_content_publish` permissions activated.
+* If no Instagram account is detected after connecting, check that the Page has an Instagram Professional account linked in its settings.
 
 == Installation ==
 
-1. Upload the plugin files to the `/wp-content/plugins/post-forwarder` directory, or install the plugin through the WordPress plugins screen directly.
-2. Activate the plugin through the 'Plugins' screen in WordPress
-3. Go to Settings → Post Forwarding to configure your destination portals
-4. Set up Application Passwords on your destination WordPress sites for API access
-5. Start forwarding posts by selecting portals in the post editor
+= Plugin =
+
+1. Upload the plugin to `/wp-content/plugins/post-forwarder/` or install via the Plugins screen.
+2. Activate the plugin.
+3. Go to **Settings → Post Forwarding** to configure portals.
+
+= Relay Server (required for LinkedIn, X, and Meta) =
+
+The relay is a Cloudflare Worker that holds your OAuth app credentials. You deploy your own instance.
+
+1. Clone or download the relay from the repository.
+2. Install dependencies: `npm install`
+3. Create a KV namespace: `wrangler kv:namespace create TOKENS` and paste the returned ID into `wrangler.toml`.
+4. Set your OAuth app secrets:
+   * LinkedIn: `wrangler secret put LINKEDIN_CLIENT_ID` and `wrangler secret put LINKEDIN_CLIENT_SECRET`
+   * X: `wrangler secret put X_CLIENT_ID` and `wrangler secret put X_CLIENT_SECRET`
+   * Meta: `wrangler secret put META_APP_ID` and `wrangler secret put META_APP_SECRET`
+5. Deploy: `wrangler deploy`
+6. In the plugin, go to **Settings → Post Forwarding** and set the Relay URL to your deployed worker URL.
+
+= WordPress portal credentials (manual) =
+
+1. On the destination WordPress site go to **Users → Profile**.
+2. Scroll to **Application Passwords**, create a new password.
+3. In the plugin settings, enter the username and the generated password, or use the "Save & Connect with WordPress" button for a one-click flow.
 
 == Frequently Asked Questions ==
 
-= How do I set up API access for destination sites? =
+= Can I post to my personal Facebook or Instagram? =
 
-1. On each destination WordPress site, go to Users → Profile
-2. Scroll down to "Application Passwords"
-3. Create a new application password
-4. Use the user ID and generated password in the plugin configuration
+No. Meta's Graph API does not allow posting to personal profiles. You need a Facebook Page (any category) for Facebook posts, and an Instagram Professional (Business or Creator) account linked to that Page for Instagram posts. This is a Meta platform restriction.
 
-= What happens if a custom taxonomy doesn't exist on the destination site? =
+= Why does X posting fail with a billing or credits error? =
 
-The plugin uses intelligent taxonomy mapping. It first tries to send taxonomies as they are. If that fails, it converts all taxonomy terms to regular tags, ensuring no content is lost.
+X requires a paid API subscription for write access. The Basic plan ($100/month) is the minimum. The plugin's code is correct — you need an active paid plan on your X Developer account.
+
+= Do X tokens expire after 2 hours? =
+
+No. The plugin uses OAuth 2.0 with `offline.access` scope, which gives long-lived tokens. The relay refreshes them automatically. The 2-hour limit applies to old OAuth 1.0a tokens, which this plugin does not use.
+
+= How often do LinkedIn tokens expire? =
+
+LinkedIn tokens are valid for 60 days. The plugin shows the expiry date in the portal settings. Reconnect before they expire to avoid forwarding failures.
+
+= Do I need the relay server? =
+
+Only for LinkedIn, X, and Meta. WordPress-to-WordPress forwarding works without it.
+
+= Can I forward to multiple destinations at once? =
+
+Yes. Check as many portals as you want in the post editor sidebar — all selected portals receive the post when you publish or update.
+
+= What happens if a forwarding destination is unreachable? =
+
+The plugin logs the error and reports it in the post editor sidebar after saving. Other destinations are still attempted.
 
 = Can I forward custom post types? =
 
-Yes! The plugin works with any public post type. It automatically detects the post type and uses the appropriate REST API endpoint.
-
-= Will featured images be transferred? =
-
-Yes, the plugin automatically downloads featured images from the source site and uploads them to the destination site, maintaining the featured image relationship.
-
-= How does duplicate prevention work? =
-
-The plugin uses a sophisticated transient-based locking system that prevents the same post from being forwarded multiple times, even if the save action is triggered multiple times.
-
-= Can I forward to multiple sites at once? =
-
-Absolutely! You can configure multiple portals and select which ones to forward each post to using checkboxes in the post editor.
+Yes for WordPress portals. Social platforms (LinkedIn, X, Meta) always receive a link post with the excerpt and featured image regardless of post type.
 
 == Screenshots ==
 
-1. **Portal Configuration** - Easy-to-use interface for configuring destination WordPress sites
-2. **Post Editor Integration** - Simple checkboxes to select which portals to forward posts to
-3. **Advanced JSON Configuration** - For power users who prefer direct JSON editing
-4. **Settings Page** - Global plugin settings and portal management
+1. Portal configuration — WordPress, LinkedIn, X, and Meta portals side by side
+2. Post editor sidebar — select destinations and see forwarding results per portal
+3. One-click OAuth connect buttons for each social platform
+4. Advanced JSON configuration for power users
 
 == Changelog ==
+
+= 3.0.0 =
+* Added LinkedIn forwarding with OAuth via relay server and featured image support
+* Added X (Twitter) forwarding with OAuth 2.0 via relay server and automatic token refresh
+* Added Meta (Facebook + Instagram) forwarding with Facebook Page posts, image attachment, and Instagram container publish flow
+* Added Cloudflare Worker relay server for secure OAuth credential storage
+* Added one-click "Save & Connect" buttons for WordPress (Application Password flow), LinkedIn, X, and Meta
+* Added per-forwarding result notifications in the post editor sidebar
+* Fixed token persistence bug where OAuth tokens were discarded on settings re-save
+* Improved metabox to show correct connection badge and status for each portal type
 
 = 2.1.0 =
 * Added multi-portal support with selective forwarding
@@ -103,7 +158,6 @@ Absolutely! You can configure multiple portals and select which ones to forward 
 * Added user-friendly portal configuration interface
 * Enhanced custom post type support
 * Added internationalization support
-* Improved security with proper input sanitization
 
 = 2.0.0 =
 * Complete rewrite with REST API support
@@ -116,34 +170,29 @@ Absolutely! You can configure multiple portals and select which ones to forward 
 
 == Upgrade Notice ==
 
-= 2.1.0 =
-Major update with multi-portal support, taxonomy mapping, featured image transfer, and many other improvements. Please review your configuration after updating.
+= 3.0.0 =
+Major update adding LinkedIn, X, and Meta (Facebook + Instagram) forwarding. A relay server is required for social platform OAuth. Existing WordPress portal configurations are fully preserved.
 
 == Technical Notes ==
 
-**REST API Endpoints Used:**
-* `/wp-json/wp/v2/posts` - For standard posts
-* `/wp-json/wp/v2/{post_type}` - For custom post types
-* `/wp-json/wp/v2/media` - For featured image uploads
+**WordPress REST API endpoints used:**
+* `/wp-json/wp/v2/posts` — standard posts
+* `/wp-json/wp/v2/{post_type}` — custom post types
+* `/wp-json/wp/v2/media` — featured image uploads
+* `/wp-admin/authorize-application.php` — Application Password authorization
+
+**Social API endpoints used:**
+* LinkedIn REST API v2 (Images + UGC Posts)
+* X API v2 (Tweets)
+* Meta Graph API v21 (Pages Feed, Photos, Instagram Media)
 
 **Security:**
-* All data is properly sanitized and validated
-* Uses WordPress nonces for form security
-* Application passwords for secure API authentication
-* No data is stored insecurely
-
-**Performance:**
-* Minimal impact on site performance
-* Efficient transient-based duplicate prevention
-* Optimized API calls with proper error handling
-* Smart taxonomy processing to reduce API calls
-
-== Support ==
-
-For support, feature requests, or bug reports, please visit the plugin's support forum or GitHub repository.
+* OAuth credentials for LinkedIn, X, and Meta are stored only in the relay server — never in the WordPress database
+* All form inputs are sanitized and validated
+* WordPress nonces protect all forms and OAuth callbacks
+* One-time tokens with short TTLs are used for the relay-to-WordPress credential handoff
 
 **Minimum Requirements:**
-* WordPress 5.0+
+* WordPress 5.6+
 * PHP 7.4+
-* REST API enabled on destination sites
-* Application passwords configured for API access
+* Cloudflare account (free tier) for the relay server — required for LinkedIn, X, and Meta
