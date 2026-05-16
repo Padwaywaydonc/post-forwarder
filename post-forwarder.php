@@ -3674,7 +3674,7 @@ function post_forwarder_forward_to_meta( $post, $mapping ) {
  * @param array $channel_keys Array of portal keys to forward to.
  * @return array Per-channel results.
  */
-function post_forwarder_schedule_forward( $post_id, array $channel_keys ) {
+function post_forwarder_schedule_forward( $post_id, array $channel_keys, $fallback_image_url = '' ) {
     $post = get_post( $post_id );
     if ( ! $post ) {
         return array();
@@ -3692,6 +3692,10 @@ function post_forwarder_schedule_forward( $post_id, array $channel_keys ) {
     if ( $thumb_id ) {
         $src                = wp_get_attachment_image_src( $thumb_id, 'full' );
         $featured_image_url = $src ? $src[0] : null;
+    }
+    // Use the schedule's stored image URL as a fallback (e.g. new posts created from calendar).
+    if ( ! $featured_image_url && $fallback_image_url ) {
+        $featured_image_url = $fallback_image_url;
     }
 
     $results = array();
