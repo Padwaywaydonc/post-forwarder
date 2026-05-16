@@ -1447,6 +1447,7 @@ function post_forwarding_settings_page() {
                     <?php $i = 0; foreach ($mappings as $key => $mapping): ?>
                         <?php
                         $mapping_type = isset($mapping['type']) ? $mapping['type'] : 'wordpress';
+                        $is_meta      = ( 'meta' === $mapping_type );
                         $is_linkedin  = ($mapping_type === 'linkedin');
                         $is_connected   = $is_linkedin
                             && ! empty( $mapping['access_token'] )
