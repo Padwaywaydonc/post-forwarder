@@ -1222,7 +1222,17 @@ function post_forwarder_calendar_page() {
             <div class="pf-cal-nav">
                 <button class="pf-nav-btn" id="pf-prev-week">&#8249;</button>
                 <button class="pf-today-btn" id="pf-today-btn"><?php esc_html_e( 'Today', 'post-forwarder' ); ?></button>
-                <h2 id="pf-week-label"></h2>
+                <h2 id="pf-week-label"><?php
+                    $pf_months = array('Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec');
+                    $pf_s_ts   = strtotime( $pf_week_start );
+                    $pf_e_ts   = strtotime( $pf_week_end );
+                    echo esc_html(
+                        $pf_months[ (int) gmdate( 'n', $pf_s_ts ) - 1 ] . ' ' . gmdate( 'j', $pf_s_ts ) .
+                        ' – ' .
+                        $pf_months[ (int) gmdate( 'n', $pf_e_ts ) - 1 ] . ' ' . gmdate( 'j', $pf_e_ts ) .
+                        ', ' . gmdate( 'Y', $pf_e_ts )
+                    );
+                ?></h2>
                 <button class="pf-nav-btn" id="pf-next-week">&#8250;</button>
             </div>
             <div class="pf-grid-wrap" id="pf-grid-wrap">
