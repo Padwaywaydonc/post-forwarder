@@ -1243,6 +1243,9 @@ function post_forwarder_calendar_page() {
                     </li>
                     <?php endforeach; ?>
                 <?php endif; ?>
+                <li class="pf-add-ch-item">
+                    <button type="button" class="pf-add-ch-btn" id="pf-add-channel-btn">+ <?php esc_html_e( 'Add channel', 'post-forwarder' ); ?></button>
+                </li>
             </ul>
             <div class="pf-sidebar-actions">
                 <button class="pf-btn-primary" id="pf-new-post-btn">+ <?php esc_html_e( 'New Post', 'post-forwarder' ); ?></button>
