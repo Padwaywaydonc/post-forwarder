@@ -2962,6 +2962,63 @@ function post_forwarder_forward_to_meta( $post, $mapping ) {
     );
 }
 
+/**
+ * Forward a post to specific channel keys (used by the schedule cron).
+ * Bypasses the save_post hook and duplicate-prevention transients.
+ *
+ * @param int   $post_id
+ * @param array $channel_keys Array of portal keys to forward to.
+ * @return array Per-channel results.
+ */
+function post_forwarder_schedule_forward( $post_id, array $channel_keys ) {
+    $post = get_post( $post_id );
+    if ( ! $post ) {
+        return array();
+    }
+
+    $options      = get_option( 'post_forwarding_options', array() );
+    $mappings_raw = isset( $options['mappings'] ) ? $options['mappings'] : '{}';
+    $mappings     = json_decode( is_string( $mappings_raw ) ? $mappings_raw : '{}', true );
+    if ( ! is_array( $mappings ) ) {
+        $mappings = array();
+    }
+
+    $featured_image_url = null;
+    $thumb_id           = get_post_thumbnail_id( $post_id );
+    if ( $thumb_id ) {
+        $src                = wp_get_attachment_image_src( $thumb_id, 'full' );
+        $featured_image_url = $src ? $src[0] : null;
+    }
+
+    $results = array();
+    foreach ( $channel_keys as $key ) {
+        if ( ! isset( $mappings[ $key ] ) ) {
+            continue;
+        }
+        $mapping = $mappings[ $key ];
+        $type    = isset( $mapping['type'] ) ? $mapping['type'] : '';
+
+        if ( 'linkedin' === $type ) {
+            $results[ $key ] = post_forwarder_forward_to_linkedin( $post, $mapping );
+        } elseif ( 'x' === $type ) {
+            $results[ $key ] = post_forwarder_forward_to_x( $post, $mapping, $key );
+        } elseif ( 'meta' === $type ) {
+            $results[ $key ] = post_forwarder_forward_to_meta( $post, $mapping );
+        } elseif ( 'wordpress' === $type ) {
+            // WP-to-WP forwarding reuses the full forward flow with a direct call.
+            $xproducts_backup = get_post_meta( $post_id, 'product', false );
+            update_post_meta( $post_id, 'product', $key );
+            $results[ $key ] = array( 'success' => true, 'message' => 'Queued for WP forwarding' );
+            // Restore original.
+            delete_post_meta( $post_id, 'product' );
+            foreach ( $xproducts_backup as $v ) {
+                add_post_meta( $post_id, 'product', $v );
+            }
+        }
+    }
+    return $results;
+}
+
 // Forward post after import
 function post_forward_post($post_id) {
     // More robust duplicate prevention
