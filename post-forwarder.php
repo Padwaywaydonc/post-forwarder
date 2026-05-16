@@ -342,7 +342,7 @@ add_action('admin_init', function () {
     $options['mappings'] = wp_json_encode( $portals );
     update_option( 'post_forwarding_options', $options );
 
-    $settings_url = admin_url( 'options-general.php?page=post-forwarding' );
+    $settings_url = admin_url( 'admin.php?page=post-forwarder-settings' );
 
     // Save & Connect — LinkedIn.
     if ( ! empty( $_POST['pending_linkedin_connect'] ) ) {
@@ -402,11 +402,11 @@ add_action('admin_init', function () {
                     'wordpress_auth_callback' => '1',
                     'portal_key'              => $wp_connect_key,
                     'wp_nonce'                => $nonce,
-                ), admin_url( 'options-general.php?page=post-forwarding' ) );
+                ), admin_url( 'admin.php?page=post-forwarder-settings' ) );
                 $reject_url  = add_query_arg( array(
                     'wordpress_auth_rejected' => '1',
                     'portal_key'              => $wp_connect_key,
-                ), admin_url( 'options-general.php?page=post-forwarding' ) );
+                ), admin_url( 'admin.php?page=post-forwarder-settings' ) );
 
                 wp_redirect( $wp_site_url . '/wp-admin/authorize-application.php?' . http_build_query( array(
                     'app_name'    => 'Post Forwarder',
@@ -1474,7 +1474,7 @@ function post_forwarding_settings_page() {
                         $relay_url_val = post_forwarder_relay_url();
                         if ( $relay_url_val ) {
                             $oauth_url = $relay_url_val . '/start?' . http_build_query( array(
-                                'return_url' => admin_url( 'options-general.php?page=post-forwarding' ),
+                                'return_url' => admin_url( 'admin.php?page=post-forwarder-settings' ),
                                 'portal_key' => $key,
                                 'wp_nonce'   => wp_create_nonce( 'linkedin_oauth_' . $key ),
                             ) );
@@ -1492,7 +1492,7 @@ function post_forwarding_settings_page() {
                         $meta_relay_val    = post_forwarder_relay_url();
                         $meta_connect_url  = ( $is_meta && $meta_relay_val )
                             ? $meta_relay_val . '/meta/start?' . http_build_query( array(
-                                'return_url' => admin_url( 'options-general.php?page=post-forwarding' ),
+                                'return_url' => admin_url( 'admin.php?page=post-forwarder-settings' ),
                                 'portal_key' => $key,
                                 'wp_nonce'   => wp_create_nonce( 'meta_oauth_' . $key ),
                             ) )
@@ -1504,7 +1504,7 @@ function post_forwarding_settings_page() {
                             && ( ! isset( $mapping['token_expires'] ) || $mapping['token_expires'] > time() );
                         $x_oauth_url    = ( $is_x && $relay_url_val )
                             ? $relay_url_val . '/x/start?' . http_build_query( array(
-                                'return_url' => admin_url( 'options-general.php?page=post-forwarding' ),
+                                'return_url' => admin_url( 'admin.php?page=post-forwarder-settings' ),
                                 'portal_key' => $key,
                                 'wp_nonce'   => wp_create_nonce( 'x_oauth_' . $key ),
                             ) )
