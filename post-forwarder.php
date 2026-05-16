@@ -1270,6 +1270,35 @@ function post_forwarding_settings_page() {
         <?php echo wp_kses_post($linkedin_oauth_notice); ?>
         <?php echo wp_kses_post($x_oauth_notice); ?>
         <?php echo wp_kses_post( $wp_auth_notice ); ?>
+        <?php
+        if ( strpos( $meta_auth_notice, 'page_select:' ) === 0 ) :
+            $meta_picker_key  = substr( $meta_auth_notice, strlen( 'page_select:' ) );
+            $meta_picker_opts = get_option( 'post_forwarding_options', array() );
+            if ( is_string( $meta_picker_opts ) ) { $meta_picker_opts = json_decode( $meta_picker_opts, true ); }
+            $meta_picker_maps = isset( $meta_picker_opts['mappings'] ) ? $meta_picker_opts['mappings'] : array();
+            if ( ! is_array( $meta_picker_maps ) ) { $meta_picker_maps = json_decode( is_string( $meta_picker_maps ) ? $meta_picker_maps : '{}', true ); }
+            $meta_picker_pages = isset( $meta_picker_maps[ $meta_picker_key ]['pending_pages'] ) ? $meta_picker_maps[ $meta_picker_key ]['pending_pages'] : array();
+        ?>
+        <div class="notice notice-info" style="padding:16px;">
+            <p><strong><?php esc_html_e( 'Select a Facebook Page to connect:', 'post-forwarder' ); ?></strong></p>
+            <form method="post">
+                <?php wp_nonce_field( 'meta_page_select' ); ?>
+                <input type="hidden" name="meta_select_portal_key" value="<?php echo esc_attr( $meta_picker_key ); ?>">
+                <?php foreach ( $meta_picker_pages as $pg ) : ?>
+                <label style="display:block;margin:6px 0;">
+                    <input type="radio" name="meta_select_page" value="<?php echo esc_attr( $pg['id'] ); ?>" required>
+                    <strong><?php echo esc_html( $pg['name'] ); ?></strong>
+                    <?php if ( ! empty( $pg['instagram_business_account']['id'] ) ) : ?>
+                        <span style="color:#666;font-size:12px;margin-left:6px;">+ Instagram</span>
+                    <?php endif; ?>
+                </label>
+                <?php endforeach; ?>
+                <?php submit_button( __( 'Connect Selected Page', 'post-forwarder' ), 'primary', 'submit', false ); ?>
+            </form>
+        </div>
+        <?php else : ?>
+        <?php echo wp_kses_post( $meta_auth_notice ); ?>
+        <?php endif; ?>
         <form method="post" action="options.php">
             <?php settings_fields('post_forwarding'); ?>
             <table class="form-table">
