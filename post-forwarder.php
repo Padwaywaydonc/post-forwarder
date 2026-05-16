@@ -104,8 +104,8 @@ add_action( 'admin_notices', function () {
         $icon  = $r['success'] ? '✓' : '✗';
         $badge = '';
         if ( isset( $r['type'] ) ) {
-            $badge_colors = array( 'linkedin' => '#0a66c2', 'x' => '#000', 'wordpress' => '#3858e9' );
-            $badge_labels = array( 'linkedin' => 'LI', 'x' => 'X', 'wordpress' => 'WP' );
+            $badge_colors = array( 'linkedin' => '#0a66c2', 'x' => '#000', 'wordpress' => '#3858e9', 'meta' => '#1877f2' );
+            $badge_labels = array( 'linkedin' => 'LI', 'x' => 'X', 'wordpress' => 'WP', 'meta' => 'META' );
             if ( isset( $badge_colors[ $r['type'] ] ) ) {
                 $badge = ' <span style="background:' . esc_attr( $badge_colors[ $r['type'] ] ) . ';color:#fff;font-size:10px;padding:1px 5px;border-radius:3px;">' . esc_html( $badge_labels[ $r['type'] ] ) . '</span>';
             }
@@ -593,8 +593,8 @@ function post_forwarding_meta_box_callback($post) {
         foreach ( $pf_results as $r ) {
             $icon  = $r['success'] ? '✓' : '✗';
             $color = $r['success'] ? '#00a32a' : '#cc0000';
-            $badge_colors = array( 'linkedin' => '#0a66c2', 'x' => '#000', 'wordpress' => '#3858e9' );
-            $badge_labels = array( 'linkedin' => 'LI', 'x' => 'X', 'wordpress' => 'WP' );
+            $badge_colors = array( 'linkedin' => '#0a66c2', 'x' => '#000', 'wordpress' => '#3858e9', 'meta' => '#1877f2' );
+            $badge_labels = array( 'linkedin' => 'LI', 'x' => 'X', 'wordpress' => 'WP', 'meta' => 'META' );
             $badge = '';
             if ( isset( $r['type'], $badge_colors[ $r['type'] ] ) ) {
                 $badge = '<span style="background:' . esc_attr( $badge_colors[ $r['type'] ] ) . ';color:#fff;font-size:9px;padding:1px 4px;border-radius:2px;margin-left:3px;">' . esc_html( $badge_labels[ $r['type'] ] ) . '</span>';
