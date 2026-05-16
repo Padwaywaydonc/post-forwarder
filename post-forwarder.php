@@ -182,7 +182,7 @@ function post_forwarder_relay_url() {
     if ( ! empty( $opts['relay_url'] ) ) {
         return rtrim( $opts['relay_url'], '/' );
     }
-    return '';
+    return 'https://post-forwarder-relay.sylwesterulatowski.workers.dev';
 }
 
 function post_forwarder_channel_connected( array $m ) {
