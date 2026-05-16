@@ -1342,7 +1342,7 @@ function post_forwarding_settings_page() {
                             </tr>
                             <tr class="fields-wordpress wp-manual-fields" style="display:none;">
                                 <th><?php esc_html_e( 'App Password', 'post-forwarder' ); ?></th>
-                                <td><input type="text" name="portals[0][password]" placeholder="xxxx xxxx xxxx xxxx" style="width: 300px;" /></td>
+                                <td><input type="password" name="portals[0][password]" placeholder="xxxx xxxx xxxx xxxx" style="width: 300px;" /></td>
                             </tr>
                             <?php if ( ! $li_creds_from_constants ) : ?>
                             <tr class="fields-linkedin" style="display:none;">
