@@ -1278,7 +1278,7 @@ function post_forwarder_calendar_page() {
                     <div class="pf-field">
                         <label><?php esc_html_e( 'Thumbnail', 'post-forwarder' ); ?></label>
                         <div class="pf-thumb-wrap">
-                            <label class="pf-thumb-label" for="pf-new-thumb-file">
+                            <label class="pf-thumb-label" id="pf-thumb-label" for="pf-new-thumb-file">
                                 <span id="pf-thumb-hint"><?php esc_html_e( 'Click to choose image…', 'post-forwarder' ); ?></span>
                                 <img id="pf-thumb-preview" src="" alt="" style="display:none;max-width:100%;max-height:120px;border-radius:4px;margin-top:6px;">
                             </label>
