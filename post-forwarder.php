@@ -2228,6 +2228,16 @@ function post_forwarding_settings_page() {
                         </select>
                     </td>
                 </tr>
+                <tr>
+                    <th scope="row"><?php esc_html_e('Relay URL', 'post-forwarder'); ?></th>
+                    <td>
+                        <input type="url" name="post_forwarding_options[relay_url]"
+                               value="<?php echo esc_attr( isset( $options['relay_url'] ) ? $options['relay_url'] : '' ); ?>"
+                               placeholder="https://your-relay.workers.dev"
+                               style="width:400px;" />
+                        <p class="description"><?php esc_html_e( 'Required for LinkedIn, X, and Meta. URL of your deployed Cloudflare Worker relay. Overridden by the POST_FORWARDER_RELAY_URL constant if set.', 'post-forwarder' ); ?></p>
+                    </td>
+                </tr>
             </table>
             <?php submit_button(); ?>
         </form>
