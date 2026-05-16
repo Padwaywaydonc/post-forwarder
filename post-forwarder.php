@@ -1693,6 +1693,123 @@ function post_forwarder_calendar_page() {
     <?php
 }
 
+// AJAX: add a new channel from the calendar modal.
+add_action( 'wp_ajax_pf_add_channel', function () {
+    if ( ! current_user_can( 'manage_options' ) || ! check_ajax_referer( 'pf_add_channel', 'nonce', false ) ) {
+        wp_send_json_error( array( 'message' => 'Unauthorized' ) );
+    }
+
+    $name = sanitize_text_field( wp_unslash( $_POST['name'] ?? '' ) );
+    $type = sanitize_key( wp_unslash( $_POST['type'] ?? 'wordpress' ) );
+    $url  = esc_url_raw( wp_unslash( $_POST['url'] ?? '' ) );
+    $user = sanitize_text_field( wp_unslash( $_POST['user'] ?? '' ) );
+    $pass = sanitize_text_field( wp_unslash( $_POST['password'] ?? '' ) );
+
+    if ( ! $name ) {
+        wp_send_json_error( array( 'message' => __( 'Channel name is required.', 'post-forwarder' ) ) );
+    }
+
+    $allowed_types = array( 'linkedin', 'x', 'wordpress', 'meta' );
+    if ( ! in_array( $type, $allowed_types, true ) ) {
+        $type = 'wordpress';
+    }
+    if ( 'wordpress' === $type && ! $url ) {
+        wp_send_json_error( array( 'message' => __( 'Site URL is required for WordPress portals.', 'post-forwarder' ) ) );
+    }
+
+    $options = get_option( 'post_forwarding_options', array() );
+    if ( is_string( $options ) ) { $options = json_decode( $options, true ) ?: array(); }
+    $mappings_raw = isset( $options['mappings'] ) ? $options['mappings'] : array();
+    $mappings = is_array( $mappings_raw ) ? $mappings_raw : ( json_decode( is_string( $mappings_raw ) ? $mappings_raw : '{}', true ) ?: array() );
+
+    // Generate unique key.
+    $base = sanitize_title( $name ) ?: 'portal';
+    $key  = $base;
+    $n    = 2;
+    while ( isset( $mappings[ $key ] ) ) { $key = $base . '-' . $n++; }
+
+    switch ( $type ) {
+        case 'linkedin':
+            $mappings[ $key ] = array( 'type' => 'linkedin', 'name' => $name );
+            break;
+        case 'x':
+            $mappings[ $key ] = array( 'type' => 'x', 'name' => $name );
+            break;
+        case 'meta':
+            $mappings[ $key ] = array( 'type' => 'meta', 'name' => $name, 'post_to_facebook' => true, 'post_to_instagram' => false );
+            break;
+        default:
+            $mappings[ $key ] = array( 'type' => 'wordpress', 'name' => $name, 'url' => $url, 'user' => $user, 'password' => $pass );
+    }
+    $options['mappings'] = wp_json_encode( $mappings );
+    update_option( 'post_forwarding_options', $options );
+
+    // Build OAuth / auth URL to redirect the user into the connect flow.
+    $settings_url = admin_url( 'admin.php?page=post-forwarder-settings' );
+    $relay        = post_forwarder_relay_url();
+    $oauth_url    = null;
+
+    if ( 'linkedin' === $type && $relay ) {
+        $oauth_url = $relay . '/start?' . http_build_query( array(
+            'return_url' => $settings_url,
+            'portal_key' => $key,
+            'wp_nonce'   => wp_create_nonce( 'linkedin_oauth_' . $key ),
+            'wp_site'    => admin_url(),
+        ) );
+    } elseif ( 'x' === $type && $relay ) {
+        $oauth_url = $relay . '/start-x?' . http_build_query( array(
+            'return_url' => $settings_url,
+            'portal_key' => $key,
+            'wp_nonce'   => wp_create_nonce( 'x_oauth_' . $key ),
+            'wp_site'    => admin_url(),
+        ) );
+    } elseif ( 'meta' === $type && $relay ) {
+        $oauth_url = $relay . '/start-meta?' . http_build_query( array(
+            'return_url' => $settings_url,
+            'portal_key' => $key,
+            'wp_nonce'   => wp_create_nonce( 'meta_oauth_' . $key ),
+            'wp_site'    => admin_url(),
+        ) );
+    } elseif ( 'wordpress' === $type && $url && ! $user ) {
+        // App Password flow: redirect to target site's authorize page.
+        $nonce       = wp_create_nonce( 'wp_auth_' . $key );
+        $success_url = add_query_arg( array(
+            'wordpress_auth_callback' => '1',
+            'portal_key'              => $key,
+            'wp_nonce'                => $nonce,
+        ), $settings_url );
+        $reject_url = add_query_arg( array(
+            'wordpress_auth_rejected' => '1',
+            'portal_key'              => $key,
+        ), $settings_url );
+        $oauth_url = rtrim( $url, '/' ) . '/wp-admin/authorize-application.php?' . http_build_query( array(
+            'app_name'    => 'Post Forwarder',
+            'success_url' => $success_url,
+            'reject_url'  => $reject_url,
+        ) );
+    }
+
+    $platform_colors = array(
+        'linkedin'  => array( 'bg' => '#0a66c2', 'label' => 'in' ),
+        'x'         => array( 'bg' => '#000000', 'label' => 'X' ),
+        'meta'      => array( 'bg' => '#1877f2', 'label' => 'f' ),
+        'wordpress' => array( 'bg' => '#3858e9', 'label' => 'W' ),
+    );
+    $color     = $platform_colors[ $type ]['bg'] ?? '#555';
+    $badge     = $platform_colors[ $type ]['label'] ?? '?';
+    $connected = post_forwarder_channel_connected( $mappings[ $key ] );
+
+    wp_send_json_success( array(
+        'key'       => $key,
+        'name'      => $name,
+        'type'      => $type,
+        'color'     => $color,
+        'badge'     => $badge,
+        'connected' => $connected,
+        'oauth_url' => $oauth_url,
+    ) );
+} );
+
 // Settings page HTML
 function post_forwarding_settings_page() {
     if (!current_user_can('manage_options')) {
