@@ -1401,14 +1401,21 @@ function post_forwarder_calendar_page() {
             cell.appendChild(line);
         }
 
+        function safeRenderGrid() {
+            try { renderGrid(); } catch(e) {
+                var w = document.getElementById('pf-grid-wrap');
+                if (w) { w.innerHTML = '<div class="pf-loading" style="color:#cc0000;">Calendar error — please refresh the page.<br><small>'+e+'</small></div>'; }
+            }
+        }
+
         function loadWeek() {
             document.getElementById('pf-grid-wrap').innerHTML = '<div class="pf-loading">Loading…</div>';
             apiFetch('GET', 'schedule?week_start='+fmtDate(currentStart)).then(function(data) {
                 scheduleItems = Array.isArray(data) ? data : [];
-                renderGrid();
-            }).catch(function() {
+                safeRenderGrid();
+            }).catch(function(e) {
                 scheduleItems = [];
-                renderGrid();
+                safeRenderGrid();
             });
         }
 
