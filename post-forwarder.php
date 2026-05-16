@@ -3257,14 +3257,15 @@ add_action('save_post', 'post_forward_post', 20, 1);
 
 // Plugin activation hook
 register_activation_hook(__FILE__, function() {
-    // Set default options
-    $default_options = array(
-        'enabled' => false,
+    add_option('post_forwarding_options', array(
+        'enabled'     => false,
         'post_status' => 'draft',
-        'mappings' => '{}'
-    );
-    
-    add_option('post_forwarding_options', $default_options);
+        'mappings'    => '{}',
+    ));
+    post_forwarder_create_schedule_table();
+    if ( ! wp_next_scheduled( 'post_forwarder_run_schedule' ) ) {
+        wp_schedule_event( time(), 'pf_every_minute', 'post_forwarder_run_schedule' );
+    }
 });
 
 // Plugin deactivation hook
