@@ -1351,7 +1351,7 @@ function post_forwarding_settings_page() {
                             </tr>
                             <tr class="fields-linkedin" style="display:none;">
                                 <th><?php esc_html_e( 'Client Secret', 'post-forwarder' ); ?></th>
-                                <td><input type="text" name="portals[0][client_secret]" placeholder="<?php esc_attr_e( 'LinkedIn App Client Secret', 'post-forwarder' ); ?>" style="width: 300px;" /></td>
+                                <td><input type="password" name="portals[0][client_secret]" placeholder="<?php esc_attr_e( 'LinkedIn App Client Secret', 'post-forwarder' ); ?>" style="width: 300px;" /></td>
                             </tr>
                             <tr class="fields-linkedin" style="display:none;">
                                 <th><?php esc_html_e( 'Author URN', 'post-forwarder' ); ?></th>
