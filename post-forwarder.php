@@ -1292,7 +1292,7 @@ function post_forwarder_calendar_page() {
             for (var di = 0; di < 7; di++) {
                 var day = addDays(currentStart, di);
                 var isToday = day.getTime() === today.getTime();
-                html += '<div class="pf-day-header' + (isToday ? ' today' : '') + '">' + DAYS[di] + '<span class="pf-day-num">' + day.getDate() + '</span></div>';
+                html += '<div class="pf-day-header' + (isToday ? ' today' : '') + '">' + DAY_NAMES[day.getDay()] + '<span class="pf-day-num">' + day.getDate() + '</span></div>';
             }
             for (var h = START_HOUR; h <= END_HOUR; h++) {
                 var label = h < 12 ? h+' AM' : h === 12 ? '12 PM' : (h-12)+' PM';
