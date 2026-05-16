@@ -951,7 +951,6 @@ function post_forwarding_settings_page() {
 
             if ( ! $meta_relay_token_key || ! $meta_relay_url ) {
                 $meta_auth_notice = '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'Meta connection failed: missing token key.', 'post-forwarder' ) . '</p></div>';
-                error_log( '[post-forwarder] Meta callback: missing token key or relay URL. key=' . $meta_relay_token_key . ' url=' . $meta_relay_url );
             } else {
                 $meta_token_resp = wp_remote_post( $meta_relay_url . '/token', array(
                     'headers' => array( 'Content-Type' => 'application/json' ),
@@ -961,25 +960,20 @@ function post_forwarding_settings_page() {
 
                 if ( is_wp_error( $meta_token_resp ) ) {
                     $meta_auth_notice = '<div class="notice notice-error is-dismissible"><p>' . sprintf( esc_html__( 'Meta connection failed: relay request error — %s', 'post-forwarder' ), esc_html( $meta_token_resp->get_error_message() ) ) . '</p></div>';
-                    error_log( '[post-forwarder] Meta callback: wp_remote_post error: ' . $meta_token_resp->get_error_message() );
                 } elseif ( 200 !== wp_remote_retrieve_response_code( $meta_token_resp ) ) {
                     $http_code = wp_remote_retrieve_response_code( $meta_token_resp );
                     $body      = wp_remote_retrieve_body( $meta_token_resp );
                     $meta_auth_notice = '<div class="notice notice-error is-dismissible"><p>' . sprintf( esc_html__( 'Meta connection failed: relay returned HTTP %d — %s', 'post-forwarder' ), $http_code, esc_html( $body ) ) . '</p></div>';
-                    error_log( '[post-forwarder] Meta callback: relay /token HTTP ' . $http_code . ' body: ' . $body );
                 } else {
                     $meta_payload    = json_decode( wp_remote_retrieve_body( $meta_token_resp ), true );
                     $meta_portal_key = isset( $meta_payload['portal_key'] ) ? sanitize_key( $meta_payload['portal_key'] ) : '';
                     $meta_wp_nonce   = isset( $meta_payload['wp_nonce'] )   ? $meta_payload['wp_nonce']   : '';
                     $meta_pages      = isset( $meta_payload['pages'] )      ? $meta_payload['pages']      : array();
-                    error_log( '[post-forwarder] Meta callback: payload portal_key=' . $meta_portal_key . ' pages=' . count( $meta_pages ) . ' nonce_ok=' . ( wp_verify_nonce( $meta_wp_nonce, 'meta_oauth_' . $meta_portal_key ) ? 'yes' : 'no' ) );
 
                     if ( ! $meta_portal_key || ! wp_verify_nonce( $meta_wp_nonce, 'meta_oauth_' . $meta_portal_key ) ) {
                         $meta_auth_notice = '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'Meta connection failed: security check failed.', 'post-forwarder' ) . '</p></div>';
-                        error_log( '[post-forwarder] Meta callback: nonce verification failed for key=' . $meta_portal_key );
                     } elseif ( empty( $meta_pages ) ) {
                         $meta_auth_notice = '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'Meta connection failed: no pages in payload.', 'post-forwarder' ) . '</p></div>';
-                        error_log( '[post-forwarder] Meta callback: pages array is empty' );
                     } else {
                         $meta_cb_opts = get_option( 'post_forwarding_options', array() );
                         if ( is_string( $meta_cb_opts ) ) { $meta_cb_opts = json_decode( $meta_cb_opts, true ); }
