@@ -1769,8 +1769,49 @@ function post_forwarding_settings_page() {
                                         <?php endif; ?>
                                     </td>
                                 </tr>
+                                <tr class="fields-meta" <?php echo $is_meta ? '' : 'style="display:none;"'; ?>>
+                                    <th><?php esc_html_e( 'App ID', 'post-forwarder' ); ?></th>
+                                    <td><input type="text" name="portals[<?php echo esc_attr($i); ?>][app_id]" value="<?php echo esc_attr( isset( $mapping['app_id'] ) ? $mapping['app_id'] : '' ); ?>" style="width:240px;" /></td>
+                                </tr>
+                                <tr class="fields-meta" <?php echo $is_meta ? '' : 'style="display:none;"'; ?>>
+                                    <th><?php esc_html_e( 'App Secret', 'post-forwarder' ); ?></th>
+                                    <td><input type="text" name="portals[<?php echo esc_attr($i); ?>][app_secret]" value="<?php echo esc_attr( isset( $mapping['app_secret'] ) ? $mapping['app_secret'] : '' ); ?>" style="width:300px;" /></td>
+                                </tr>
+                                <tr class="fields-meta" <?php echo $is_meta ? '' : 'style="display:none;"'; ?>>
+                                    <th><?php esc_html_e( 'Post to', 'post-forwarder' ); ?></th>
+                                    <td>
+                                        <label><input type="checkbox" name="portals[<?php echo esc_attr($i); ?>][post_to_facebook]" value="1" <?php checked( ! empty( $mapping['post_to_facebook'] ) ); ?>> <?php esc_html_e( 'Facebook Page', 'post-forwarder' ); ?></label>
+                                        &nbsp;&nbsp;
+                                        <label><input type="checkbox" name="portals[<?php echo esc_attr($i); ?>][post_to_instagram]" value="1" <?php checked( ! empty( $mapping['post_to_instagram'] ) ); ?>> <?php esc_html_e( 'Instagram', 'post-forwarder' ); ?></label>
+                                    </td>
+                                </tr>
+                                <tr class="fields-meta" <?php echo $is_meta ? '' : 'style="display:none;"'; ?>>
+                                    <th><?php esc_html_e( 'Connection', 'post-forwarder' ); ?></th>
+                                    <td>
+                                        <?php if ( $is_meta_connected ) : ?>
+                                            <span style="color:#00a32a;font-weight:600;">&#10003; <?php esc_html_e( 'Connected', 'post-forwarder' ); ?></span>
+                                            <span style="color:#666;font-size:12px;margin-left:8px;"><?php echo esc_html( isset( $mapping['page_name'] ) ? $mapping['page_name'] : '' ); ?></span>
+                                            <?php if ( ! empty( $mapping['instagram_account_id'] ) ) : ?>
+                                                <span style="color:#c13584;font-size:12px;margin-left:6px;">+ Instagram</span>
+                                            <?php endif; ?>
+                                            <?php if ( $meta_connect_url ) : ?>
+                                                <a href="<?php echo esc_url( $meta_connect_url ); ?>" class="button button-secondary" style="margin-left:10px;"><?php esc_html_e( 'Reconnect', 'post-forwarder' ); ?></a>
+                                            <?php endif; ?>
+                                        <?php elseif ( $meta_connect_url ) : ?>
+                                            <a href="<?php echo esc_url( $meta_connect_url ); ?>" class="button" style="background:#1877f2;border-color:#1877f2;color:#fff;">&#10132; <?php esc_html_e( 'Connect with Meta', 'post-forwarder' ); ?></a>
+                                        <?php else : ?>
+                                            <span style="color:#666;"><?php esc_html_e( 'Enter App ID and Secret, then save.', 'post-forwarder' ); ?></span>
+                                        <?php endif; ?>
+                                        <?php if ( $is_meta && ! empty( $mapping['last_error'] ) && ! $is_meta_connected ) : ?>
+                                            <p class="description" style="color:#cc0000;margin-top:6px;">
+                                                <strong><?php esc_html_e( 'Last error:', 'post-forwarder' ); ?></strong>
+                                                <?php echo esc_html( $mapping['last_error'] ); ?>
+                                            </p>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
                             </table>
-                            <button type="button" class="button test-connection" style="margin-right: 8px;<?php echo ( $is_linkedin || $is_x ) ? ' display:none;' : ''; ?>"><?php esc_html_e('Test Connection', 'post-forwarder'); ?></button>
+                            <button type="button" class="button test-connection" style="margin-right: 8px;<?php echo ( $is_linkedin || $is_x || $is_meta ) ? ' display:none;' : ''; ?>"><?php esc_html_e('Test Connection', 'post-forwarder'); ?></button>
                             <span class="connection-result" style="font-weight: 600;"></span>
                             <button type="button" class="button remove-portal" style="float: right;"><?php esc_html_e('Remove Account', 'post-forwarder'); ?></button>
                         </div><!-- end portal-detail -->
