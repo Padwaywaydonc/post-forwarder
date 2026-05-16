@@ -435,8 +435,30 @@ function post_forwarding_sanitize_options($input) {
 
     // Preserve mappings from input when provided — OAuth callbacks and the portals form pass this.
     // When the global settings form submits (no mappings key), leave existing mappings untouched.
+    // When the JSON textarea is submitted, '***' placeholders must not overwrite real stored values.
     if ( isset( $input['mappings'] ) && $input['mappings'] !== '' ) {
-        $sanitized['mappings'] = $input['mappings'];
+        $new_mappings = json_decode( $input['mappings'], true );
+        if ( is_array( $new_mappings ) ) {
+            $existing_mappings = isset( $sanitized['mappings'] ) ? $sanitized['mappings'] : array();
+            if ( ! is_array( $existing_mappings ) ) {
+                $existing_mappings = json_decode( is_string( $existing_mappings ) ? $existing_mappings : '{}', true );
+                if ( ! is_array( $existing_mappings ) ) {
+                    $existing_mappings = array();
+                }
+            }
+            $sensitive_keys = array( 'access_token', 'refresh_token', 'password', 'client_secret' );
+            foreach ( $new_mappings as $mkey => &$mapping ) {
+                foreach ( $sensitive_keys as $sk ) {
+                    if ( isset( $mapping[ $sk ] ) && '***' === $mapping[ $sk ] && isset( $existing_mappings[ $mkey ][ $sk ] ) ) {
+                        $mapping[ $sk ] = $existing_mappings[ $mkey ][ $sk ];
+                    }
+                }
+            }
+            unset( $mapping );
+            $sanitized['mappings'] = wp_json_encode( $new_mappings );
+        } else {
+            $sanitized['mappings'] = $input['mappings'];
+        }
     }
 
     return $sanitized;
