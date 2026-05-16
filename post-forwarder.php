@@ -1100,7 +1100,7 @@ function post_forwarder_calendar_page() {
         .pf-day-header .pf-day-num { display:block; font-size:20px; font-weight:700; color:#1d2327; margin-top:2px; }
         .pf-day-header.today .pf-day-num { color:#fff; }
         .pf-time-col { color:#8c8f94; font-size:10px; text-align:right; padding:0 6px; height:60px; display:flex; align-items:flex-start; padding-top:4px; border-right:1px solid #c3c4c7; background:#fff; }
-        .pf-time-col.spacer { height:37px; border-bottom:1px solid #c3c4c7; background:#fff; }
+        .pf-time-col.spacer { height:auto; border-bottom:1px solid #c3c4c7; background:#fff; position:sticky; top:0; z-index:11; }
         .pf-slot { height:60px; border-right:1px solid #e2e4e7; border-bottom:1px solid #f0f0f1; position:relative; cursor:pointer; background:#fff; transition:background .1s; }
         .pf-slot:hover { background:#f6f7f7; }
 
