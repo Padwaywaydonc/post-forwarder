@@ -2366,10 +2366,6 @@ function post_forwarding_settings_page() {
                                 </td>
                             </tr>
                             <tr>
-                                <th><?php esc_html_e( 'Account Key', 'post-forwarder' ); ?></th>
-                                <td><input type="text" name="portals[0][key]" placeholder="<?php esc_attr_e( 'e.g., portal1', 'post-forwarder' ); ?>" style="width: 200px;" /></td>
-                            </tr>
-                            <tr>
                                 <th><?php esc_html_e( 'Account Name', 'post-forwarder' ); ?></th>
                                 <td><input type="text" name="portals[0][name]" placeholder="<?php esc_attr_e( 'e.g., Example Portal', 'post-forwarder' ); ?>" style="width: 300px;" /></td>
                             </tr>
