@@ -1481,8 +1481,9 @@ function post_forwarder_calendar_page() {
                 if (!pid) { alert('<?php echo esc_js( __( 'Please select a post from the list.', 'post-forwarder' ) ); ?>'); return; }
                 body.post_id = parseInt(pid, 10);
             } else {
-                body.title   = document.getElementById('pf-new-title').value;
-                body.content = document.getElementById('pf-new-content').value;
+                body.title     = document.getElementById('pf-new-title').value;
+                body.content   = document.getElementById('pf-new-content').value;
+                body.image_url = document.getElementById('pf-new-thumb-url').value;
                 if (!body.title && !body.content) { alert('<?php echo esc_js( __( 'Please enter a title or content.', 'post-forwarder' ) ); ?>'); return; }
             }
             var btn = document.getElementById('pf-save-btn');
