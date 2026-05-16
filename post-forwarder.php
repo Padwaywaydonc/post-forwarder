@@ -1395,28 +1395,48 @@ function post_forwarder_calendar_page() {
         }
 
         function placeItems() {
+            // Group items by cell so we can split width for collisions.
+            var cellMap = {};
+            var slots = document.querySelectorAll('.pf-slot');
             scheduleItems.forEach(function(item) {
-                var dt = new Date(item.scheduled_at.replace(' ','T') + 'Z'); // stored UTC
+                var dt = new Date(item.scheduled_at.replace(' ','T') + 'Z');
                 var dayIdx = Math.round((new Date(fmtDate(dt)).getTime() - currentStart.getTime()) / 86400000);
                 if (dayIdx < 0 || dayIdx > 6) return;
-                var h = dt.getHours(), m = dt.getMinutes();
+                var h = dt.getHours();
                 if (h < START_HOUR || h > END_HOUR) return;
-                var slots = document.querySelectorAll('.pf-slot');
-                var cell  = slots[(h - START_HOUR) * 7 + dayIdx];
-                if (!cell) return;
-                var keys  = Array.isArray(item.channel_keys) ? item.channel_keys : [];
-                var firstCh = keys.length ? CHANNELS.find(function(c){return c.key===keys[0];}) : null;
-                var color = firstCh ? firstCh.color : '#2271b1';
-                var badges = keys.map(function(k) {
-                    var ch = CHANNELS.find(function(c){return c.key===k;});
-                    return ch ? '<span class="pf-item-badge" style="background:rgba(0,0,0,.25)">'+ch.badge+'</span>' : '';
-                }).join('');
-                var el = document.createElement('div');
-                el.className = 'pf-item status-' + (item.status||'pending');
-                el.dataset.id = item.id;
-                el.style.cssText = 'top:'+((m/60)*100)+'%;background:'+color+';border-left:3px solid rgba(0,0,0,.2);';
-                el.innerHTML = '<span class="pf-item-badges">'+badges+'</span><span class="pf-item-label">'+escHtml(item.post_title||item.title||'(untitled)')+'</span>';
-                cell.appendChild(el);
+                var key = h + '-' + dayIdx;
+                if (!cellMap[key]) cellMap[key] = [];
+                cellMap[key].push({ item: item, dt: dt, h: h, dayIdx: dayIdx });
+            });
+            Object.keys(cellMap).forEach(function(key) {
+                var entries = cellMap[key];
+                var total   = entries.length;
+                entries.forEach(function(entry, idx) {
+                    var item = entry.item, dt = entry.dt;
+                    var cell = slots[(entry.h - START_HOUR) * 7 + entry.dayIdx];
+                    if (!cell) return;
+                    var m      = dt.getMinutes();
+                    var keys   = Array.isArray(item.channel_keys) ? item.channel_keys : [];
+                    var firstCh = keys.length ? CHANNELS.find(function(c){return c.key===keys[0];}) : null;
+                    var color  = firstCh ? firstCh.color : '#2271b1';
+                    var badges = keys.map(function(k) {
+                        var ch = CHANNELS.find(function(c){return c.key===k;});
+                        return ch ? '<span class="pf-item-badge" style="background:rgba(0,0,0,.25)">'+ch.badge+'</span>' : '';
+                    }).join('');
+                    var el = document.createElement('div');
+                    el.className = 'pf-item status-' + (item.status||'pending');
+                    el.dataset.id = item.id;
+                    var topPct   = (m / 60) * 100;
+                    var wPct     = 100 / total;
+                    var leftPct  = wPct * idx;
+                    var rightPct = 100 - leftPct - wPct;
+                    el.style.cssText = 'top:'+topPct+'%;'
+                        + 'left:calc('+leftPct+'% + 3px);'
+                        + 'right:calc('+rightPct+'% + 3px);'
+                        + 'background:'+color+';border-left:3px solid rgba(0,0,0,.2);';
+                    el.innerHTML = '<span class="pf-item-badges">'+badges+'</span><span class="pf-item-label">'+escHtml(item.post_title||item.title||'(untitled)')+'</span>';
+                    cell.appendChild(el);
+                });
             });
         }
 
