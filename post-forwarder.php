@@ -1414,6 +1414,30 @@ function post_forwarding_settings_page() {
                                     <?php endif; ?>
                                 </td>
                             </tr>
+                            <tr class="fields-meta" style="display:none;">
+                                <th><?php esc_html_e( 'App ID', 'post-forwarder' ); ?></th>
+                                <td><input type="text" name="portals[0][app_id]" placeholder="<?php esc_attr_e( 'Meta App ID', 'post-forwarder' ); ?>" style="width:240px;" /></td>
+                            </tr>
+                            <tr class="fields-meta" style="display:none;">
+                                <th><?php esc_html_e( 'App Secret', 'post-forwarder' ); ?></th>
+                                <td><input type="text" name="portals[0][app_secret]" placeholder="<?php esc_attr_e( 'Meta App Secret', 'post-forwarder' ); ?>" style="width:300px;" /></td>
+                            </tr>
+                            <tr class="fields-meta" style="display:none;">
+                                <th><?php esc_html_e( 'Post to', 'post-forwarder' ); ?></th>
+                                <td>
+                                    <label><input type="checkbox" name="portals[0][post_to_facebook]" value="1" checked> <?php esc_html_e( 'Facebook Page', 'post-forwarder' ); ?></label>
+                                    &nbsp;&nbsp;
+                                    <label><input type="checkbox" name="portals[0][post_to_instagram]" value="1" checked> <?php esc_html_e( 'Instagram', 'post-forwarder' ); ?></label>
+                                    <p class="description"><?php esc_html_e( 'Instagram requires a Business/Creator account linked to the Page, and a publicly accessible image.', 'post-forwarder' ); ?></p>
+                                </td>
+                            </tr>
+                            <tr class="fields-meta" style="display:none;">
+                                <th><?php esc_html_e( 'Connection', 'post-forwarder' ); ?></th>
+                                <td>
+                                    <button type="button" class="button save-and-connect-meta" style="background:#1877f2;border-color:#1877f2;color:#fff;">&#10132; <?php esc_html_e( 'Save &amp; Connect with Meta', 'post-forwarder' ); ?></button>
+                                    <p class="description" style="margin-top:6px;"><?php esc_html_e( 'Redirects to Facebook to authorize. Your App ID and Secret must be saved first.', 'post-forwarder' ); ?></p>
+                                </td>
+                            </tr>
                         </table>
                         <button type="button" class="button test-connection" style="margin-right: 8px;"><?php esc_html_e( 'Test Connection', 'post-forwarder' ); ?></button>
                         <span class="connection-result" style="font-weight: 600;"></span>
