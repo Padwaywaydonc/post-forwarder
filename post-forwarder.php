@@ -1315,17 +1315,18 @@ function post_forwarder_calendar_page() {
 
     <script>
     (function() {
-        var REST_URL   = <?php echo wp_json_encode( $rest_url ); ?>;
-        var REST_NONCE = <?php echo wp_json_encode( $rest_nonce ); ?>;
-        var CHANNELS   = <?php echo wp_json_encode( $channels_js ); ?>;
+        var REST_URL      = <?php echo wp_json_encode( $rest_url ); ?>;
+        var REST_NONCE    = <?php echo wp_json_encode( $rest_nonce ); ?>;
+        var CHANNELS      = <?php echo wp_json_encode( $channels_js ); ?>;
+        var INITIAL_ITEMS = <?php echo wp_json_encode( array_values( $pf_initial_rows ) ); ?>;
         var DAY_NAMES  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
         var MONTHS     = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
         var START_HOUR = 7;
         var END_HOUR   = 22;
 
-        var currentStart = startOfDay(new Date()); // today, not Monday
-        var editingId    = null;
-        var scheduleItems = [];
+        var currentStart  = startOfDay(new Date()); // today, not Monday
+        var editingId     = null;
+        var scheduleItems = INITIAL_ITEMS;
         var searchTimer   = null;
 
         function startOfDay(d) { var r = new Date(d); r.setHours(0,0,0,0); return r; }
