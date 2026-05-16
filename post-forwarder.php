@@ -242,7 +242,7 @@ function post_forwarder_execute_schedule() {
     $due = $wpdb->get_results(
         $wpdb->prepare(
             "SELECT * FROM {$table} WHERE status = 'pending' AND scheduled_at <= %s ORDER BY scheduled_at ASC LIMIT 10",
-            current_time( 'mysql' )
+            current_time( 'mysql', true ) // UTC
         )
     );
 
