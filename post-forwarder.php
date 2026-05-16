@@ -293,6 +293,13 @@ function post_forwarder_execute_schedule() {
             if ( $new_id && ! is_wp_error( $new_id ) ) {
                 $post_id = $new_id;
                 $wpdb->update( $table, array( 'post_id' => $post_id ), array( 'id' => $item->id ) );
+                // Attach the uploaded thumbnail to the new post.
+                if ( ! empty( $item->image_url ) ) {
+                    $att_id = attachment_url_to_postid( $item->image_url );
+                    if ( $att_id ) {
+                        set_post_thumbnail( $post_id, $att_id );
+                    }
+                }
             }
         } elseif ( $post_id ) {
             $existing = get_post( $post_id );
