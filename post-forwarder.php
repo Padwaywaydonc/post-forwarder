@@ -175,8 +175,7 @@ function post_forwarder_relay_url() {
     if ( defined( 'POST_FORWARDER_RELAY_URL' ) && POST_FORWARDER_RELAY_URL ) {
         return rtrim( POST_FORWARDER_RELAY_URL, '/' );
     }
-    // Replace this with your deployed Cloudflare Worker URL after running `wrangler deploy`.
-    return 'https://post-forwarder-relay.sylwesterulatowski.workers.dev';
+    return '';
 }
 
 /**
