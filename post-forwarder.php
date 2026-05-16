@@ -2530,9 +2530,12 @@ function post_forwarder_forward_to_meta( $post, $mapping ) {
                     'body'    => $mp_body,
                     'timeout' => 60,
                 ) );
-                if ( ! is_wp_error( $photo_resp ) && wp_remote_retrieve_response_code( $photo_resp ) === 201 ) {
+                $photo_code = wp_remote_retrieve_response_code( $photo_resp );
+                if ( ! is_wp_error( $photo_resp ) && $photo_code >= 200 && $photo_code < 300 ) {
                     $photo_data  = json_decode( wp_remote_retrieve_body( $photo_resp ), true );
                     $fb_photo_id = $photo_data['id'] ?? null;
+                } else {
+                    post_forwarder_log_error( 'Facebook photo upload failed (' . ( is_wp_error( $photo_resp ) ? $photo_resp->get_error_message() : $photo_code ) . '): ' . ( is_wp_error( $photo_resp ) ? '' : wp_remote_retrieve_body( $photo_resp ) ) );
                 }
             }
         }
