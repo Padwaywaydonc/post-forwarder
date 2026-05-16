@@ -225,7 +225,7 @@ add_filter( 'cron_schedules', function ( $schedules ) {
     if ( ! isset( $schedules['pf_every_minute'] ) ) {
         $schedules['pf_every_minute'] = array(
             'interval' => 60,
-            'display'  => __( 'Every Minute (Post Forwarder)', 'post-forwarder' ),
+            'display'  => 'Every Minute (Post Forwarder)',
         );
     }
     return $schedules;
