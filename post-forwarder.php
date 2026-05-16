@@ -1626,8 +1626,8 @@ function post_forwarder_calendar_page() {
 
         document.addEventListener('keydown', function(e){if(e.key==='Escape')closeModal();});
 
-        // Defer past current JS execution to ensure WordPress admin is fully initialised.
-        setTimeout(loadWeek, 0);
+        // Render initial week from PHP-preloaded data — no fetch needed on first paint.
+        safeRenderGrid();
     })();
     </script>
     <?php
