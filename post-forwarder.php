@@ -1984,6 +1984,20 @@ function post_forwarding_settings_page() {
             $connectRow.nextAll('.wp-manual-fields').slice(0, 2).toggle();
         });
 
+        $(document).on('click', '.save-and-connect-meta', function() {
+            var $row    = $(this).closest('.portal-row');
+            var key     = $.trim($row.find('input[name$="[key]"]').val());
+            var name    = $.trim($row.find('input[name$="[name]"]').val());
+            var app_id  = $.trim($row.find('input[name$="[app_id]"]').val());
+            var secret  = $.trim($row.find('input[name$="[app_secret]"]').val());
+            if (!key)    { alert('<?php echo esc_js( __( 'Please enter an Account Key first.', 'post-forwarder' ) ); ?>'); return; }
+            if (!name)   { alert('<?php echo esc_js( __( 'Please enter an Account Name first.', 'post-forwarder' ) ); ?>'); return; }
+            if (!app_id) { alert('<?php echo esc_js( __( 'Please enter a Meta App ID first.', 'post-forwarder' ) ); ?>'); return; }
+            if (!secret) { alert('<?php echo esc_js( __( 'Please enter a Meta App Secret first.', 'post-forwarder' ) ); ?>'); return; }
+            $('input[name="pending_meta_connect"]').val(key);
+            $row.closest('form').find('input[name="submit_portals"]').click();
+        });
+
         // Expand/collapse connected portal detail.
         $(document).on('click', '.portal-expand-btn', function(e) {
             e.stopPropagation();
