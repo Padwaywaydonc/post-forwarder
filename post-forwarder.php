@@ -1155,11 +1155,7 @@ function post_forwarder_calendar_page() {
                         $color     = isset( $platform_colors[ $type ] ) ? $platform_colors[ $type ]['bg'] : '#555';
                         $badge_lbl = isset( $platform_colors[ $type ] ) ? $platform_colors[ $type ]['label'] : '?';
                         $letter    = strtoupper( mb_substr( $name, 0, 1 ) );
-                        $connected = false;
-                        if ( 'linkedin' === $type )      { $connected = ! empty( $m['access_token'] ); }
-                        elseif ( 'x' === $type )         { $connected = ! empty( $m['access_token'] ); }
-                        elseif ( 'meta' === $type )      { $connected = ! empty( $m['access_token'] ) && ! empty( $m['page_id'] ); }
-                        elseif ( 'wordpress' === $type ) { $connected = ! empty( $m['user'] ) && ! empty( $m['password'] ); }
+                        $connected = post_forwarder_channel_connected( $m );
                     ?>
                     <li class="pf-channel-item">
                         <div class="pf-channel-item-top">
