@@ -175,6 +175,13 @@ function post_forwarder_relay_url() {
     if ( defined( 'POST_FORWARDER_RELAY_URL' ) && POST_FORWARDER_RELAY_URL ) {
         return rtrim( POST_FORWARDER_RELAY_URL, '/' );
     }
+    $opts = get_option( 'post_forwarding_options', array() );
+    if ( is_string( $opts ) ) {
+        $opts = json_decode( $opts, true ) ?: array();
+    }
+    if ( ! empty( $opts['relay_url'] ) ) {
+        return rtrim( $opts['relay_url'], '/' );
+    }
     return '';
 }
 
