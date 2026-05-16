@@ -1213,6 +1213,18 @@ function post_forwarder_calendar_page() {
                         <label><?php esc_html_e( 'Content', 'post-forwarder' ); ?></label>
                         <textarea id="pf-new-content" placeholder="<?php esc_attr_e( 'Write your post content…', 'post-forwarder' ); ?>"></textarea>
                     </div>
+                    <div class="pf-field">
+                        <label><?php esc_html_e( 'Thumbnail', 'post-forwarder' ); ?></label>
+                        <div class="pf-thumb-wrap">
+                            <label class="pf-thumb-label" for="pf-new-thumb-file">
+                                <span id="pf-thumb-hint"><?php esc_html_e( 'Click to choose image…', 'post-forwarder' ); ?></span>
+                                <img id="pf-thumb-preview" src="" alt="" style="display:none;max-width:100%;max-height:120px;border-radius:4px;margin-top:6px;">
+                            </label>
+                            <input type="file" id="pf-new-thumb-file" accept="image/*" style="display:none;">
+                            <input type="hidden" id="pf-new-thumb-url">
+                            <button type="button" class="pf-thumb-clear" id="pf-thumb-clear" style="display:none;"><?php esc_html_e( 'Remove', 'post-forwarder' ); ?></button>
+                        </div>
+                    </div>
                 </div>
                 <div class="pf-field">
                     <label><?php esc_html_e( 'Date & time', 'post-forwarder' ); ?></label>
