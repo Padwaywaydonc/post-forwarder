@@ -1637,7 +1637,7 @@ function post_forwarding_settings_page() {
                                 </tr>
                                 <tr class="fields-linkedin" <?php echo $is_linkedin ? '' : 'style="display:none;"'; ?>>
                                     <th><?php esc_html_e( 'Client Secret', 'post-forwarder' ); ?></th>
-                                    <td><input type="text" name="portals[<?php echo esc_attr( $i ); ?>][client_secret]" value="<?php echo esc_attr( isset( $mapping['client_secret'] ) ? $mapping['client_secret'] : '' ); ?>" style="width: 300px;" /></td>
+                                    <td><input type="password" name="portals[<?php echo esc_attr( $i ); ?>][client_secret]" value="<?php echo esc_attr( isset( $mapping['client_secret'] ) ? $mapping['client_secret'] : '' ); ?>" style="width: 300px;" /></td>
                                 </tr>
                                 <tr class="fields-linkedin" <?php echo $is_linkedin ? '' : 'style="display:none;"'; ?>>
                                     <th><?php esc_html_e( 'Author URN', 'post-forwarder' ); ?></th>
