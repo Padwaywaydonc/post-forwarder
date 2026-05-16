@@ -2867,6 +2867,22 @@ function post_forward_post($post_id) {
             continue;
         }
 
+        // Route to Meta (Facebook + Instagram).
+        if ( $target_type === 'meta' ) {
+            $result = post_forwarder_forward_to_meta( $post, $target );
+            $portal_results[$xproduct] = array(
+                'name'    => $portal_name,
+                'type'    => 'meta',
+                'success' => $result['success'],
+                'message' => $result['message'],
+            );
+            if ( $result['success'] ) {
+                $forwarding_successful = true;
+                $successful_portals[]  = $xproduct;
+            }
+            continue;
+        }
+
         // Route to X (Twitter) if this is an X account
         if ( $target_type === 'x' ) {
             $result = post_forwarder_forward_to_x( $post, $target, $xproduct );
