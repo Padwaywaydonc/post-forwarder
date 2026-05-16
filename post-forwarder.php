@@ -192,6 +192,21 @@ function post_forwarder_log_error( $message ) {
     }
 }
 
+/**
+ * Return a copy of the mappings array with sensitive values replaced by '***' for display.
+ */
+function post_forwarder_mask_mappings( $mappings ) {
+    $sensitive = array( 'access_token', 'refresh_token', 'password', 'client_secret' );
+    foreach ( $mappings as $key => $mapping ) {
+        foreach ( $sensitive as $sk ) {
+            if ( ! empty( $mapping[ $sk ] ) ) {
+                $mappings[ $key ][ $sk ] = '***';
+            }
+        }
+    }
+    return $mappings;
+}
+
 // Register settings
 add_action('admin_menu', function () {
     add_options_page(
