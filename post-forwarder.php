@@ -1358,6 +1358,74 @@ function post_forwarder_calendar_page() {
         </div>
     </div>
 
+    <!-- Add Channel modal -->
+    <div class="pf-modal-overlay" id="pf-ch-overlay">
+        <div class="pf-modal" style="width:420px;">
+            <div class="pf-modal-header">
+                <h3><?php esc_html_e( 'Add Channel', 'post-forwarder' ); ?></h3>
+                <button class="pf-modal-close" id="pf-ch-close">&times;</button>
+            </div>
+            <div class="pf-modal-body">
+                <div class="pf-field">
+                    <label for="pf-ch-name"><?php esc_html_e( 'Channel Name', 'post-forwarder' ); ?></label>
+                    <input type="text" id="pf-ch-name" placeholder="<?php esc_attr_e( 'e.g. My Facebook Page', 'post-forwarder' ); ?>">
+                </div>
+                <div class="pf-field">
+                    <label><?php esc_html_e( 'Platform', 'post-forwarder' ); ?></label>
+                    <div class="pf-type-picker">
+                        <button type="button" class="pf-type-btn selected" data-type="wordpress">
+                            <span class="pf-avatar" style="background:#3858e9;">W</span>
+                            WordPress
+                        </button>
+                        <button type="button" class="pf-type-btn" data-type="linkedin">
+                            <span class="pf-avatar" style="background:#0a66c2;">in</span>
+                            LinkedIn
+                        </button>
+                        <button type="button" class="pf-type-btn" data-type="x">
+                            <span class="pf-avatar" style="background:#000;">X</span>
+                            X (Twitter)
+                        </button>
+                        <button type="button" class="pf-type-btn" data-type="meta">
+                            <span class="pf-avatar" style="background:#1877f2;">f</span>
+                            Meta
+                        </button>
+                    </div>
+                </div>
+                <div id="pf-ch-wp-section">
+                    <div class="pf-field">
+                        <label for="pf-ch-wp-url"><?php esc_html_e( 'Site URL', 'post-forwarder' ); ?></label>
+                        <input type="url" id="pf-ch-wp-url" placeholder="https://example.com">
+                    </div>
+                    <p style="margin:4px 0 0;font-size:12px;color:#50575e;">
+                        <?php esc_html_e( "You'll be redirected to the target site to authorize via WordPress Application Passwords.", 'post-forwarder' ); ?>
+                        <a href="#" id="pf-ch-wp-manual-toggle" style="display:block;margin-top:4px;"><?php esc_html_e( 'Enter credentials manually instead', 'post-forwarder' ); ?></a>
+                    </p>
+                    <div id="pf-ch-wp-manual" style="display:none;margin-top:10px;">
+                        <div class="pf-field">
+                            <label for="pf-ch-wp-user"><?php esc_html_e( 'Username', 'post-forwarder' ); ?></label>
+                            <input type="text" id="pf-ch-wp-user" placeholder="<?php esc_attr_e( 'username', 'post-forwarder' ); ?>">
+                        </div>
+                        <div class="pf-field">
+                            <label for="pf-ch-wp-pass"><?php esc_html_e( 'App Password', 'post-forwarder' ); ?></label>
+                            <input type="text" id="pf-ch-wp-pass" placeholder="xxxx xxxx xxxx xxxx">
+                        </div>
+                    </div>
+                </div>
+                <div id="pf-ch-social-section" style="display:none;">
+                    <p class="pf-ch-info"><?php esc_html_e( "After saving you'll be redirected to authorize with the platform. You'll land on the Settings page once connected.", 'post-forwarder' ); ?></p>
+                </div>
+                <div id="pf-ch-msg" style="display:none;margin-top:4px;"></div>
+            </div>
+            <div class="pf-modal-footer">
+                <span></span>
+                <div style="display:flex;gap:8px;">
+                    <button type="button" class="pf-btn-secondary" id="pf-ch-cancel"><?php esc_html_e( 'Cancel', 'post-forwarder' ); ?></button>
+                    <button type="button" class="pf-btn-primary" id="pf-ch-save"><?php esc_html_e( 'Save &amp; Connect', 'post-forwarder' ); ?></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
     (function() {
         var REST_URL      = <?php echo wp_json_encode( $rest_url ); ?>;
