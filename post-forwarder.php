@@ -337,7 +337,7 @@ add_action('admin_menu', function () {
         'manage_options',
         'post-forwarder',
         'post_forwarder_calendar_page',
-        'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="3.5" r="2"/><path d="M7 5.5h6a1 1 0 0 1 0 1H7.5L6 5.8A2 2 0 0 1 7 5.5z"/><path d="M6 6.5h-.5A1.5 1.5 0 0 0 4 8v.5h2.5V6.5z"/><rect x="5.5" y="6" width="1" height="3" rx=".4"/><path d="M6.5 6.5h7A1.5 1.5 0 0 1 15 8v3.5a.5.5 0 0 1-.5.5H6a.5.5 0 0 1-.5-.5V8A1.5 1.5 0 0 1 6.5 6.5z"/><rect x="3.5" y="13" width="5" height="3.5" rx=".5"/><rect x="11" y="13" width="5.5" height="3.5" rx=".5"/><path d="M6 12h8v1.5H6z"/><rect x="12" y="8" width="4" height="3" rx=".5"/><path d="M12 9l2-1 2 1" fill="none" stroke="currentColor" stroke-width=".8"/></svg>'),
+        'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><rect x="5" y="5" width="8" height="1" rx=".5"/><path d="M5.8 3.5h6.4L13 5H5z"/><circle cx="9" cy="8" r="2"/><path d="M5.5 10A1.5 1.5 0 0 1 7 8.5h4A1.5 1.5 0 0 1 12.5 10v4.5H5.5z"/><rect x="6.5" y="14.5" width="2" height="4" rx=".5"/><rect x="9.5" y="14.5" width="2" height="4" rx=".5"/><rect x="13" y="10" width="6.5" height="5" rx=".5"/><path d="M13 10.3 16.25 13l3.25-2.7V10H13z" fill-opacity=".3"/></svg>'),
         30
     );
     add_submenu_page(
