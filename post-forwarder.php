@@ -1331,8 +1331,8 @@ function post_forwarder_calendar_page() {
         var INITIAL_ITEMS = <?php echo wp_json_encode( array_values( $pf_initial_rows ) ); ?>;
         var DAY_NAMES  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
         var MONTHS     = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        var START_HOUR = 7;
-        var END_HOUR   = 22;
+        var START_HOUR = 0;
+        var END_HOUR   = 23;
 
         var currentStart  = startOfDay(new Date()); // today, not Monday
         var editingId     = null;
