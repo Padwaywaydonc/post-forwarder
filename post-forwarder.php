@@ -1437,6 +1437,7 @@ function post_forwarder_calendar_page() {
 
         function safeRenderGrid() {
             try { renderGrid(); } catch(e) {
+                console.error('Post Forwarder renderGrid error:', e);
                 var w = document.getElementById('pf-grid-wrap');
                 if (w) { w.innerHTML = '<div class="pf-loading" style="color:#cc0000;">Calendar error — please refresh the page.<br><small>'+e+'</small></div>'; }
             }
