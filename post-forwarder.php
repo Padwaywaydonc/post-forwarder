@@ -310,7 +310,8 @@ function post_forwarder_execute_schedule() {
 
         $results = array();
         if ( $post_id && ! is_wp_error( $post_id ) ) {
-            $results = post_forwarder_schedule_forward( $post_id, $channel_keys );
+            $fallback_image_url = ! empty( $item->image_url ) ? $item->image_url : '';
+            $results = post_forwarder_schedule_forward( $post_id, $channel_keys, $fallback_image_url );
         }
 
         $wpdb->update( $table, array(
