@@ -677,7 +677,7 @@ add_action( 'rest_api_init', function () {
                 'excerpt'      => $excerpt,
                 'image_url'    => $image_url,
                 'channel_keys' => wp_json_encode( array_values( (array) $channel_keys ) ),
-                'scheduled_at' => date( 'Y-m-d H:i:s', strtotime( $scheduled_at ) ),
+                'scheduled_at' => gmdate( 'Y-m-d H:i:s', strtotime( $scheduled_at ) ),
                 'status'       => 'pending',
                 'result'       => '{}',
                 'created_at'   => current_time( 'mysql' ),
