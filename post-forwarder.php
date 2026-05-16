@@ -1797,7 +1797,7 @@ function post_forwarding_settings_page() {
                 <tr>
                     <th scope="row"><?php esc_html_e('Mappings (JSON)', 'post-forwarder'); ?></th>
                     <td>
-                        <textarea name="post_forwarding_options[mappings]" rows="10" cols="70"><?php echo esc_textarea(wp_json_encode($mappings)); ?></textarea><br>
+                        <textarea name="post_forwarding_options[mappings]" rows="10" cols="70"><?php echo esc_textarea(wp_json_encode(post_forwarder_mask_mappings($mappings))); ?></textarea><br>
                         <small><?php esc_html_e('Advanced users can edit the JSON directly. Use the form above for easier configuration.', 'post-forwarder'); ?></small>
                     </td>
                 </tr>
