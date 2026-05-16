@@ -398,10 +398,21 @@ add_action('admin_init', function () {
         $portals_raw = wp_unslash( $_POST['portals'] );
 
         foreach ( $portals_raw as $index => $portal ) {
-            if ( ! is_array( $portal ) || empty( $portal['key'] ) || empty( $portal['name'] ) ) {
+            if ( ! is_array( $portal ) || empty( $portal['name'] ) ) {
                 continue;
             }
-            $key           = sanitize_key( $portal['key'] );
+            // Use existing key if present (existing portal), otherwise generate from name.
+            if ( ! empty( $portal['key'] ) ) {
+                $key = sanitize_key( $portal['key'] );
+            } else {
+                $base = sanitize_title( $portal['name'] );
+                if ( ! $base ) { $base = 'portal'; }
+                $key  = $base;
+                $n    = 2;
+                while ( isset( $portals[ $key ] ) ) {
+                    $key = $base . '-' . $n++;
+                }
+            }
             $allowed_types = array( 'linkedin', 'x', 'wordpress', 'meta' );
             $type          = ( isset( $portal['type'] ) && in_array( $portal['type'], $allowed_types, true ) ) ? $portal['type'] : 'wordpress';
 
