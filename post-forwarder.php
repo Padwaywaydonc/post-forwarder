@@ -1316,11 +1316,16 @@ function post_forwarder_calendar_page() {
         function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
         function apiFetch(method, path, body) {
+            var headers = { 'X-WP-Nonce': REST_NONCE };
+            if (body) { headers['Content-Type'] = 'application/json'; }
             return fetch(REST_URL + path, {
                 method: method,
-                headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': REST_NONCE },
+                headers: headers,
                 body: body ? JSON.stringify(body) : undefined,
-            }).then(function(r) { return r.json(); });
+            }).then(function(r) {
+                if (!r.ok) { return Promise.reject(new Error('HTTP ' + r.status)); }
+                return r.json();
+            });
         }
 
         // ── Grid ─────────────────────────────────────────────────────────
