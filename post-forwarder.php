@@ -1625,7 +1625,7 @@ function post_forwarding_settings_page() {
                                 </tr>
                                 <tr class="fields-wordpress wp-manual-fields" <?php echo $show_manual; ?>>
                                     <th><?php esc_html_e( 'App Password', 'post-forwarder' ); ?></th>
-                                    <td><input type="text" name="portals[<?php echo esc_attr($i); ?>][password]"
+                                    <td><input type="password" name="portals[<?php echo esc_attr($i); ?>][password]"
                                          value="<?php echo esc_attr( isset( $mapping['password'] ) ? $mapping['password'] : '' ); ?>"
                                          placeholder="xxxx xxxx xxxx xxxx"
                                          style="width: 300px;" /></td>
