@@ -1531,6 +1531,22 @@ function post_forwarding_settings_page() {
                                     ? '<a href="' . esc_url( $oauth_url ) . '" class="button button-small" style="background:#0a66c2;border-color:#0a66c2;color:#fff;">&#10132; ' . esc_html__( 'Connect', 'post-forwarder' ) . '</a>'
                                     : '';
                             }
+                        } elseif ( $is_meta ) {
+                            $summary_badge = '<span style="background:#1877f2;color:#fff;font-size:11px;padding:2px 8px;border-radius:3px;flex-shrink:0;">META</span>';
+                            if ( $is_meta_connected ) {
+                                $summary_status = '<span style="color:#00a32a;font-weight:600;">&#10003; Connected</span>';
+                                $page_name = ! empty( $mapping['page_name'] ) ? ' <span style="color:#666;font-size:12px;">' . esc_html( $mapping['page_name'] ) . '</span>' : '';
+                                $ig_badge  = ! empty( $mapping['instagram_account_id'] ) ? ' <span style="color:#c13584;font-size:11px;">+ IG</span>' : '';
+                                $summary_status .= $page_name . $ig_badge;
+                                $summary_action  = $meta_connect_url
+                                    ? '<a href="' . esc_url( $meta_connect_url ) . '" class="button button-secondary button-small">' . esc_html__( 'Reconnect', 'post-forwarder' ) . '</a>'
+                                    : '';
+                            } else {
+                                $summary_status = '<span style="color:#999;">' . esc_html__( 'Not connected', 'post-forwarder' ) . '</span>';
+                                $summary_action  = $meta_connect_url
+                                    ? '<a href="' . esc_url( $meta_connect_url ) . '" class="button button-small" style="background:#1877f2;border-color:#1877f2;color:#fff;">&#10132; ' . esc_html__( 'Connect', 'post-forwarder' ) . '</a>'
+                                    : '';
+                            }
                         } elseif ( $is_x ) {
                             $summary_badge = '<span style="background:#000;color:#fff;font-size:11px;padding:2px 8px;border-radius:3px;flex-shrink:0;">X</span>';
                             if ( $is_x_connected ) {
