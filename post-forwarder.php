@@ -1844,7 +1844,6 @@ function post_forwarding_settings_page() {
                 '</td></tr>' +
                 '<tr class="fields-meta" style="display:none;"><th><?php echo esc_js( __( 'Connection', 'post-forwarder' ) ); ?></th><td>' +
                 '<button type="button" class="button save-and-connect-meta" style="background:#1877f2;border-color:#1877f2;color:#fff;">&#10132; <?php echo esc_js( __( 'Save &amp; Connect with Meta', 'post-forwarder' ) ); ?></button>' +
-                '<p class="description" style="margin-top:6px;"><?php echo esc_js( __( 'Redirects to Facebook to authorize. App ID and Secret must be saved first.', 'post-forwarder' ) ); ?></p>' +
                 '</td></tr>' +
                 '</table>' +
                 '<button type="button" class="button test-connection" style="margin-right: 8px;"><?php echo esc_js( __( 'Test Connection', 'post-forwarder' ) ); ?></button>' +
