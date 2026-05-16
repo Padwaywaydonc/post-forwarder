@@ -2622,10 +2622,7 @@ function post_forwarding_settings_page() {
                                         </select>
                                     </td>
                                 </tr>
-                                <tr>
-                                    <th><?php esc_html_e('Account Key', 'post-forwarder'); ?></th>
-                                    <td><input type="text" name="portals[<?php echo esc_attr($i); ?>][key]" value="<?php echo esc_attr($key); ?>" style="width: 200px;" /></td>
-                                </tr>
+                                <input type="hidden" name="portals[<?php echo esc_attr($i); ?>][key]" value="<?php echo esc_attr($key); ?>">
                                 <tr>
                                     <th><?php esc_html_e('Account Name', 'post-forwarder'); ?></th>
                                     <td><input type="text" name="portals[<?php echo esc_attr($i); ?>][name]" value="<?php echo esc_attr($mapping['name']); ?>" style="width: 300px;" /></td>
