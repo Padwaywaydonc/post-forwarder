@@ -1715,14 +1715,6 @@ function post_forwarding_settings_page() {
                                     </td>
                                 </tr>
                                 <tr class="fields-meta" <?php echo $is_meta ? '' : 'style="display:none;"'; ?>>
-                                    <th><?php esc_html_e( 'App ID', 'post-forwarder' ); ?></th>
-                                    <td><input type="text" name="portals[<?php echo esc_attr($i); ?>][app_id]" value="<?php echo esc_attr( isset( $mapping['app_id'] ) ? $mapping['app_id'] : '' ); ?>" style="width:240px;" /></td>
-                                </tr>
-                                <tr class="fields-meta" <?php echo $is_meta ? '' : 'style="display:none;"'; ?>>
-                                    <th><?php esc_html_e( 'App Secret', 'post-forwarder' ); ?></th>
-                                    <td><input type="text" name="portals[<?php echo esc_attr($i); ?>][app_secret]" value="<?php echo esc_attr( isset( $mapping['app_secret'] ) ? $mapping['app_secret'] : '' ); ?>" style="width:300px;" /></td>
-                                </tr>
-                                <tr class="fields-meta" <?php echo $is_meta ? '' : 'style="display:none;"'; ?>>
                                     <th><?php esc_html_e( 'Post to', 'post-forwarder' ); ?></th>
                                     <td>
                                         <label><input type="checkbox" name="portals[<?php echo esc_attr($i); ?>][post_to_facebook]" value="1" <?php checked( ! empty( $mapping['post_to_facebook'] ) ); ?>> <?php esc_html_e( 'Facebook Page', 'post-forwarder' ); ?></label>
