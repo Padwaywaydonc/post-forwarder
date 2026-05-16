@@ -1836,7 +1836,7 @@ function post_forwarding_settings_page() {
                 '<p class="description" style="margin-top:6px;"><a href="#" class="wp-manual-toggle"><?php echo esc_js( __( 'Enter credentials manually instead', 'post-forwarder' ) ); ?></a></p>' +
                 '</td></tr>' +
                 '<tr class="fields-wordpress wp-manual-fields" style="display:none;"><th><?php echo esc_js( __( 'Username / User ID', 'post-forwarder' ) ); ?></th><td><input type="text" name="portals[' + n + '][user]" placeholder="<?php echo esc_js( __( 'username or user ID', 'post-forwarder' ) ); ?>" style="width: 200px;" /></td></tr>' +
-                '<tr class="fields-wordpress wp-manual-fields" style="display:none;"><th><?php echo esc_js( __( 'App Password', 'post-forwarder' ) ); ?></th><td><input type="text" name="portals[' + n + '][password]" placeholder="xxxx xxxx xxxx xxxx" style="width: 300px;" /></td></tr>' +
+                '<tr class="fields-wordpress wp-manual-fields" style="display:none;"><th><?php echo esc_js( __( 'App Password', 'post-forwarder' ) ); ?></th><td><input type="password" name="portals[' + n + '][password]" placeholder="xxxx xxxx xxxx xxxx" style="width: 300px;" /></td></tr>' +
                 liCredFields +
                 '<tr class="fields-linkedin" style="display:none;"><th><?php echo esc_js( __( 'Connection Status', 'post-forwarder' ) ); ?></th><td>' +
                 ( relayMode
