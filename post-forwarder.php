@@ -702,7 +702,7 @@ add_action( 'rest_api_init', function () {
             $data  = array();
 
             if ( null !== $req->get_param( 'scheduled_at' ) ) {
-                $data['scheduled_at'] = date( 'Y-m-d H:i:s', strtotime( sanitize_text_field( $req->get_param( 'scheduled_at' ) ) ) );
+                $data['scheduled_at'] = gmdate( 'Y-m-d H:i:s', strtotime( sanitize_text_field( $req->get_param( 'scheduled_at' ) ) ) );
             }
             if ( null !== $req->get_param( 'channel_keys' ) ) {
                 $data['channel_keys'] = wp_json_encode( array_values( (array) $req->get_param( 'channel_keys' ) ) );
