@@ -1168,7 +1168,7 @@ function post_forwarding_settings_page() {
                             . esc_html__( 'LinkedIn connection failed: Portal configuration not found.', 'post-forwarder' )
                             . '</p></div>';
                     } else {
-                        $redirect_uri = admin_url( 'options-general.php?page=post-forwarding&linkedin_oauth_callback=1' );
+                        $redirect_uri = admin_url( 'admin.php?page=post-forwarder-settings&linkedin_oauth_callback=1' );
                         $auth_code    = sanitize_text_field( wp_unslash( $_GET['code'] ) );
 
                         $token_response = wp_remote_post(
@@ -1466,7 +1466,7 @@ function post_forwarding_settings_page() {
                             && ! empty( $mapping['access_token'] )
                             && ( ! isset( $mapping['token_expires'] ) || $mapping['token_expires'] > time() );
                         $has_credentials = $li_creds_from_constants || (bool) post_forwarder_relay_url() || ! empty( $mapping['client_id'] );
-                        $oauth_redirect  = admin_url( 'options-general.php?page=post-forwarding&linkedin_oauth_callback=1' );
+                        $oauth_redirect  = admin_url( 'admin.php?page=post-forwarder-settings&linkedin_oauth_callback=1' );
                         $oauth_state     = $key . '|' . wp_create_nonce( 'linkedin_oauth_' . $key );
 
                         // Build the OAuth start URL: use the relay when configured, otherwise
