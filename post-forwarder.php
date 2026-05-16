@@ -2541,8 +2541,8 @@ function post_forwarder_forward_to_meta( $post, $mapping ) {
         }
 
         if ( $fb_photo_id ) {
-            $fb_body['message']         = $message . ( ! $is_public ? "\n\n" . $post_url : '' );
-            $fb_body['attached_media']  = wp_json_encode( array( array( 'media_fbid' => $fb_photo_id ) ) );
+            $fb_body['message']                      = $message . ( ! $is_public ? "\n\n" . $post_url : '' );
+            $fb_body['attached_media[0][media_fbid]'] = $fb_photo_id;
             if ( $is_public ) { $fb_body['link'] = $post_url; }
         } elseif ( $is_public ) {
             $fb_body['message'] = $message;
