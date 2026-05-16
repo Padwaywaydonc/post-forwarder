@@ -1254,29 +1254,23 @@ function post_forwarder_calendar_page() {
         var REST_URL   = <?php echo wp_json_encode( $rest_url ); ?>;
         var REST_NONCE = <?php echo wp_json_encode( $rest_nonce ); ?>;
         var CHANNELS   = <?php echo wp_json_encode( $channels_js ); ?>;
-        var DAYS       = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+        var DAY_NAMES  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
         var MONTHS     = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
         var START_HOUR = 7;
         var END_HOUR   = 22;
 
-        var currentMonday = getMonday(new Date());
-        var editingId     = null;
+        var currentStart = startOfDay(new Date()); // today, not Monday
+        var editingId    = null;
         var scheduleItems = [];
         var searchTimer   = null;
 
-        function getMonday(d) {
-            var day = d.getDay() || 7;
-            var m = new Date(d);
-            m.setDate(m.getDate() - (day - 1));
-            m.setHours(0,0,0,0);
-            return m;
-        }
+        function startOfDay(d) { var r = new Date(d); r.setHours(0,0,0,0); return r; }
         function addDays(d, n) { var r = new Date(d); r.setDate(r.getDate() + n); return r; }
         function fmtDate(d) { return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); }
         function pad(n) { return n < 10 ? '0'+n : ''+n; }
-        function fmtWeekLabel(mon) {
-            var sun = addDays(mon, 6);
-            return MONTHS[mon.getMonth()] + ' ' + mon.getDate() + ' – ' + MONTHS[sun.getMonth()] + ' ' + sun.getDate() + ', ' + sun.getFullYear();
+        function fmtWeekLabel(start) {
+            var end = addDays(start, 6);
+            return MONTHS[start.getMonth()] + ' ' + start.getDate() + ' – ' + MONTHS[end.getMonth()] + ' ' + end.getDate() + ', ' + end.getFullYear();
         }
         function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
