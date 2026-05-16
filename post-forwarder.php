@@ -1180,6 +1180,19 @@ function post_forwarder_calendar_page() {
         .pf-thumb-clear { background:none; border:none; color:#d63638; font-size:12px; cursor:pointer; padding:0; text-align:left; }
         .pf-thumb-clear:hover { text-decoration:underline; }
         .pf-thumb-uploading { color:#2271b1; font-size:12px; }
+
+        /* Add-channel button and modal */
+        .pf-add-ch-item { padding:8px 12px; }
+        .pf-add-ch-btn { width:100%; background:none; border:1px dashed #c3c4c7; border-radius:4px; color:#50575e; font-size:12px; padding:7px 10px; cursor:pointer; transition:all .15s; }
+        .pf-add-ch-btn:hover { border-color:#2271b1; color:#2271b1; background:#f0f6fc; }
+        .pf-type-picker { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+        .pf-type-btn { display:flex; align-items:center; gap:8px; padding:8px 10px; background:#f6f7f7; border:2px solid #c3c4c7; border-radius:4px; cursor:pointer; font-size:13px; font-weight:500; color:#1d2327; transition:all .15s; }
+        .pf-type-btn:hover { border-color:#2271b1; background:#f0f6fc; }
+        .pf-type-btn.selected { border-color:#2271b1; background:#f0f6fc; color:#2271b1; }
+        .pf-type-btn .pf-avatar { width:24px; height:24px; font-size:10px; flex-shrink:0; }
+        .pf-field input[type=url] { width:100%; border:1px solid #8c8f94; border-radius:4px; padding:7px 10px; font-size:13px; color:#1d2327; box-sizing:border-box; outline:none; font-family:inherit; background:#fff; }
+        .pf-field input[type=url]:focus { border-color:#2271b1; box-shadow:0 0 0 1px #2271b1; }
+        .pf-ch-info { padding:10px 12px; border-radius:4px; font-size:13px; background:#f0f6fc; border:1px solid #72aee6; color:#1d2327; line-height:1.5; }
         </style>
 
     <?php
