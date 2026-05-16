@@ -1477,7 +1477,7 @@ function post_forwarder_calendar_page() {
         // ── Events ───────────────────────────────────────────────────────
         document.getElementById('pf-prev-week').addEventListener('click', function(){currentStart=addDays(currentStart,-7);loadWeek();});
         document.getElementById('pf-next-week').addEventListener('click', function(){currentStart=addDays(currentStart,7);loadWeek();});
-        document.getElementById('pf-today-btn').addEventListener('click', function(){currentStart=getMonday(new Date());loadWeek();});
+        document.getElementById('pf-today-btn').addEventListener('click', function(){currentStart=startOfDay(new Date());loadWeek();});
         document.getElementById('pf-new-post-btn').addEventListener('click', function(){openModal(null);});
         document.getElementById('pf-modal-close').addEventListener('click', closeModal);
         document.getElementById('pf-modal-overlay').addEventListener('click', function(e){if(e.target===this)closeModal();});
