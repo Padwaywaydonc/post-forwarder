@@ -981,7 +981,6 @@ function post_forwarder_calendar_page() {
         return;
     }
 
-    // Load connected portals for the sidebar.
     $options      = get_option( 'post_forwarding_options', array() );
     $mappings_raw = isset( $options['mappings'] ) ? $options['mappings'] : '{}';
     $mappings     = json_decode( is_string( $mappings_raw ) ? $mappings_raw : '{}', true );
@@ -996,8 +995,9 @@ function post_forwarder_calendar_page() {
         'wordpress' => array( 'bg' => '#3858e9', 'label' => 'W' ),
     );
 
-    $rest_url   = rest_url( 'post-forwarder/v1/' );
-    $rest_nonce = wp_create_nonce( 'wp_rest' );
+    $settings_url = admin_url( 'admin.php?page=post-forwarder-settings' );
+    $rest_url     = rest_url( 'post-forwarder/v1/' );
+    $rest_nonce   = wp_create_nonce( 'wp_rest' );
     ?>
     <div class="pf-cal-root">
         <style>
