@@ -1856,6 +1856,7 @@ function post_forwarding_settings_page() {
             $row.find('.fields-wordpress').toggle(type === 'wordpress');
             $row.find('.fields-linkedin').toggle(type === 'linkedin');
             $row.find('.fields-x').toggle(type === 'x');
+            $row.find('.fields-meta').toggle(type === 'meta');
             $row.find('.test-connection').toggle(type === 'wordpress');
         }
 
