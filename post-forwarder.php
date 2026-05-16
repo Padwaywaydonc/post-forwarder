@@ -573,6 +573,10 @@ function post_forwarding_sanitize_options($input) {
         ? 'publish'
         : 'draft';
 
+    if ( isset( $input['relay_url'] ) ) {
+        $sanitized['relay_url'] = esc_url_raw( trim( $input['relay_url'] ) );
+    }
+
     // Preserve mappings from input when provided — OAuth callbacks and the portals form pass this.
     // When the global settings form submits (no mappings key), leave existing mappings untouched.
     // When the JSON textarea is submitted, '***' placeholders must not overwrite real stored values.
