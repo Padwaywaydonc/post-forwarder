@@ -1001,150 +1001,168 @@ function post_forwarder_calendar_page() {
     ?>
     <div class="pf-cal-root">
         <style>
-        /* ── Post Forwarder Calendar ─────────────────────────────────────── */
-        .pf-cal-root { display:flex; height:calc(100vh - 32px); overflow:hidden; background:#1a1a2e; color:#e8e8f0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; margin:-12px -20px 0; }
-        .pf-sidebar { width:240px; flex-shrink:0; background:#16213e; border-right:1px solid #2a2a4a; display:flex; flex-direction:column; padding:20px 0; overflow-y:auto; }
-        .pf-sidebar h3 { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.1em; color:#888; padding:0 20px 10px; margin:0; }
-        .pf-channel-list { list-style:none; margin:0 0 16px; padding:0; }
-        .pf-channel-item { display:flex; align-items:center; gap:10px; padding:8px 20px; cursor:pointer; border-radius:0; transition:background .15s; }
-        .pf-channel-item:hover { background:#1f2f5a; }
-        .pf-channel-item.active { background:#1f2f5a; }
+        /* ── Post Forwarder Calendar — WP light theme ──────────────────── */
+        .pf-cal-root { display:flex; height:calc(100vh - 32px); overflow:hidden; background:#f0f0f1; color:#1d2327; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; margin:-12px -20px 0; }
+
+        /* Sidebar */
+        .pf-sidebar { width:260px; flex-shrink:0; background:#fff; border-right:1px solid #c3c4c7; display:flex; flex-direction:column; overflow-y:auto; }
+        .pf-sidebar-head { padding:16px 16px 8px; border-bottom:1px solid #f0f0f1; }
+        .pf-sidebar-head h3 { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:#50575e; margin:0; }
+        .pf-channel-list { list-style:none; margin:0; padding:8px 0; flex:1; }
+        .pf-channel-item { padding:6px 16px 10px; border-bottom:1px solid #f6f7f7; }
+        .pf-channel-item-top { display:flex; align-items:center; gap:10px; }
         .pf-avatar { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; color:#fff; flex-shrink:0; position:relative; }
-        .pf-platform-badge { position:absolute; bottom:-2px; right:-2px; width:14px; height:14px; border-radius:3px; display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:700; color:#fff; border:1px solid #16213e; }
-        .pf-channel-name { font-size:13px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .pf-sidebar-actions { padding:0 12px; display:flex; flex-direction:column; gap:8px; margin-top:auto; }
-        .pf-btn-primary { background:#7c3aed; color:#fff; border:none; border-radius:8px; padding:10px 16px; font-size:13px; font-weight:600; cursor:pointer; text-align:center; display:flex; align-items:center; justify-content:center; gap:6px; transition:background .15s; text-decoration:none; }
-        .pf-btn-primary:hover { background:#6d28d9; color:#fff; }
-        .pf-btn-secondary { background:transparent; color:#aaa; border:1px solid #2a2a4a; border-radius:8px; padding:9px 16px; font-size:13px; cursor:pointer; text-align:center; transition:all .15s; text-decoration:none; }
-        .pf-btn-secondary:hover { border-color:#7c3aed; color:#e8e8f0; }
+        .pf-platform-badge { position:absolute; bottom:-2px; right:-2px; width:14px; height:14px; border-radius:3px; display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:700; color:#fff; border:2px solid #fff; }
+        .pf-channel-info { flex:1; min-width:0; }
+        .pf-channel-name { font-size:13px; font-weight:600; color:#1d2327; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .pf-channel-status { display:flex; align-items:center; gap:5px; margin-top:3px; }
+        .pf-status-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+        .pf-status-dot.connected { background:#00a32a; }
+        .pf-status-dot.disconnected { background:#d63638; }
+        .pf-status-text { font-size:11px; color:#50575e; }
+        .pf-reconnect-link { font-size:11px; color:#2271b1; text-decoration:none; margin-left:4px; }
+        .pf-reconnect-link:hover { text-decoration:underline; }
+        .pf-sidebar-actions { padding:12px 16px; border-top:1px solid #c3c4c7; display:flex; flex-direction:column; gap:8px; }
+        .pf-btn-primary { background:#2271b1; color:#fff; border:none; border-radius:4px; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer; text-align:center; display:flex; align-items:center; justify-content:center; gap:6px; transition:background .15s; text-decoration:none; box-shadow:inset 0 -1px 0 rgba(0,0,0,.15); }
+        .pf-btn-primary:hover { background:#135e96; color:#fff; }
+        .pf-btn-secondary { background:#fff; color:#2271b1; border:1px solid #2271b1; border-radius:4px; padding:7px 16px; font-size:13px; cursor:pointer; text-align:center; transition:all .15s; text-decoration:none; }
+        .pf-btn-secondary:hover { background:#f6f7f7; color:#135e96; border-color:#135e96; }
+        .pf-no-channels { padding:16px; color:#50575e; font-size:13px; text-align:center; }
 
-        /* ── Main calendar area ── */
-        .pf-cal-main { flex:1; display:flex; flex-direction:column; min-width:0; }
-        .pf-cal-nav { display:flex; align-items:center; gap:16px; padding:16px 20px; border-bottom:1px solid #2a2a4a; flex-shrink:0; }
-        .pf-cal-nav h2 { font-size:16px; font-weight:600; margin:0; flex:1; }
-        .pf-nav-btn { background:#2a2a4a; border:none; color:#e8e8f0; width:32px; height:32px; border-radius:6px; cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center; transition:background .15s; }
-        .pf-nav-btn:hover { background:#3a3a6a; }
-        .pf-today-btn { background:#2a2a4a; border:none; color:#e8e8f0; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:13px; transition:background .15s; }
-        .pf-today-btn:hover { background:#3a3a6a; }
+        /* Main */
+        .pf-cal-main { flex:1; display:flex; flex-direction:column; min-width:0; background:#f0f0f1; }
+        .pf-cal-nav { display:flex; align-items:center; gap:12px; padding:12px 20px; background:#fff; border-bottom:1px solid #c3c4c7; flex-shrink:0; }
+        .pf-cal-nav h2 { font-size:15px; font-weight:600; margin:0; flex:1; color:#1d2327; }
+        .pf-nav-btn { background:#fff; border:1px solid #c3c4c7; color:#1d2327; width:30px; height:30px; border-radius:4px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+        .pf-nav-btn:hover { background:#f0f0f1; border-color:#8c8f94; }
+        .pf-today-btn { background:#fff; border:1px solid #c3c4c7; color:#2271b1; padding:5px 12px; border-radius:4px; cursor:pointer; font-size:13px; transition:all .15s; font-weight:500; }
+        .pf-today-btn:hover { background:#f0f0f1; }
 
-        /* ── Grid ── */
-        .pf-grid-wrap { flex:1; overflow:auto; position:relative; }
-        .pf-grid { display:grid; grid-template-columns:56px repeat(7,1fr); min-width:700px; }
-        .pf-day-header { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:#aaa; padding:10px 8px; border-bottom:1px solid #2a2a4a; border-right:1px solid #2a2a4a; text-align:center; position:sticky; top:0; background:#1a1a2e; z-index:10; }
-        .pf-day-header.today .pf-day-num { background:#7c3aed; color:#fff; border-radius:50%; width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center; margin-top:2px; }
-        .pf-day-header .pf-day-num { display:block; font-size:18px; font-weight:700; color:#e8e8f0; margin-top:2px; }
-        .pf-time-col { color:#666; font-size:11px; text-align:right; padding:0 6px; height:60px; display:flex; align-items:flex-start; padding-top:4px; border-right:1px solid #2a2a4a; }
-        .pf-time-col.spacer { height:40px; border-bottom:1px solid #2a2a4a; }
-        .pf-slot { height:60px; border-right:1px solid #2a2a4a; border-bottom:1px solid #1e1e3a; position:relative; cursor:pointer; transition:background .1s; }
-        .pf-slot:hover { background:#1f1f3a; }
-        .pf-slot.half { border-bottom-style:dashed; border-bottom-color:#232340; }
+        /* Grid */
+        .pf-grid-wrap { flex:1; overflow:auto; }
+        .pf-grid { display:grid; grid-template-columns:52px repeat(7,1fr); min-width:700px; }
+        .pf-day-header { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:#50575e; padding:8px 4px 6px; border-bottom:1px solid #c3c4c7; border-right:1px solid #e2e4e7; text-align:center; position:sticky; top:0; background:#fff; z-index:10; }
+        .pf-day-header.today { background:#f0f6fc; }
+        .pf-day-header.today .pf-day-num { background:#2271b1; color:#fff; border-radius:50%; width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center; }
+        .pf-day-header .pf-day-num { display:block; font-size:20px; font-weight:700; color:#1d2327; margin-top:2px; }
+        .pf-day-header.today .pf-day-num { color:#fff; }
+        .pf-time-col { color:#8c8f94; font-size:10px; text-align:right; padding:0 6px; height:60px; display:flex; align-items:flex-start; padding-top:4px; border-right:1px solid #c3c4c7; background:#fff; }
+        .pf-time-col.spacer { height:37px; border-bottom:1px solid #c3c4c7; background:#fff; }
+        .pf-slot { height:60px; border-right:1px solid #e2e4e7; border-bottom:1px solid #f0f0f1; position:relative; cursor:pointer; background:#fff; transition:background .1s; }
+        .pf-slot:hover { background:#f6f7f7; }
 
-        /* ── Scheduled items ── */
-        .pf-item { position:absolute; left:3px; right:3px; border-radius:6px; padding:4px 6px; font-size:11px; cursor:pointer; overflow:hidden; z-index:5; display:flex; align-items:center; gap:4px; transition:opacity .15s; }
+        /* Scheduled items */
+        .pf-item { position:absolute; left:3px; right:3px; border-radius:3px; padding:3px 5px; font-size:11px; cursor:pointer; overflow:hidden; z-index:5; display:flex; align-items:center; gap:4px; transition:opacity .15s; color:#fff; }
         .pf-item:hover { opacity:.85; }
-        .pf-item-avatar { width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:700; flex-shrink:0; }
         .pf-item-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500; }
         .pf-item-badges { display:flex; gap:2px; flex-shrink:0; }
         .pf-item-badge { width:12px; height:12px; border-radius:2px; display:flex; align-items:center; justify-content:center; font-size:7px; font-weight:700; color:#fff; }
-        .pf-item.status-sent { opacity:.55; }
-        .pf-item.status-failed { border:1px solid #ef4444; }
+        .pf-item.status-sent { opacity:.5; }
+        .pf-item.status-failed { outline:2px solid #d63638; }
 
-        /* ── Modal ── */
-        .pf-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:1000; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity .2s; }
+        /* Now line */
+        .pf-now-line { position:absolute; left:0; right:0; height:2px; background:#d63638; z-index:8; pointer-events:none; }
+        .pf-now-line::before { content:''; position:absolute; left:-4px; top:-4px; width:10px; height:10px; border-radius:50%; background:#d63638; }
+
+        /* Modal */
+        .pf-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:100000; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity .2s; }
         .pf-modal-overlay.open { opacity:1; pointer-events:all; }
-        .pf-modal { background:#16213e; border-radius:12px; width:520px; max-width:95vw; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.5); transform:translateY(12px); transition:transform .2s; }
+        .pf-modal { background:#fff; border-radius:4px; width:540px; max-width:95vw; max-height:92vh; overflow-y:auto; box-shadow:0 5px 30px rgba(0,0,0,.3); transform:translateY(8px); transition:transform .2s; }
         .pf-modal-overlay.open .pf-modal { transform:translateY(0); }
-        .pf-modal-header { padding:20px 24px 16px; border-bottom:1px solid #2a2a4a; display:flex; align-items:center; justify-content:space-between; }
-        .pf-modal-header h3 { margin:0; font-size:16px; font-weight:600; }
-        .pf-modal-close { background:none; border:none; color:#888; font-size:20px; cursor:pointer; line-height:1; }
-        .pf-modal-body { padding:20px 24px; display:flex; flex-direction:column; gap:16px; }
-        .pf-field label { display:block; font-size:12px; font-weight:600; color:#aaa; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; }
-        .pf-field input, .pf-field textarea, .pf-field select { width:100%; background:#1a1a2e; border:1px solid #2a2a4a; color:#e8e8f0; border-radius:7px; padding:9px 12px; font-size:13px; box-sizing:border-box; outline:none; font-family:inherit; }
-        .pf-field input:focus, .pf-field textarea:focus, .pf-field select:focus { border-color:#7c3aed; }
+        .pf-modal-header { padding:16px 20px 14px; border-bottom:1px solid #c3c4c7; display:flex; align-items:center; justify-content:space-between; background:#f6f7f7; border-radius:4px 4px 0 0; }
+        .pf-modal-header h3 { margin:0; font-size:15px; font-weight:600; color:#1d2327; }
+        .pf-modal-close { background:none; border:none; color:#50575e; font-size:22px; cursor:pointer; line-height:1; padding:0; }
+        .pf-modal-close:hover { color:#1d2327; }
+        .pf-modal-body { padding:16px 20px; display:flex; flex-direction:column; gap:14px; }
+        .pf-field label { display:block; font-size:12px; font-weight:600; color:#1d2327; margin-bottom:5px; }
+        .pf-field input[type=text], .pf-field input[type=datetime-local], .pf-field textarea { width:100%; border:1px solid #8c8f94; border-radius:4px; padding:7px 10px; font-size:13px; color:#1d2327; box-sizing:border-box; outline:none; font-family:inherit; background:#fff; }
+        .pf-field input:focus, .pf-field textarea:focus { border-color:#2271b1; box-shadow:0 0 0 1px #2271b1; }
         .pf-field textarea { resize:vertical; min-height:90px; }
-        .pf-mode-tabs { display:flex; gap:8px; }
-        .pf-mode-tab { flex:1; padding:8px; background:#1a1a2e; border:1px solid #2a2a4a; color:#aaa; border-radius:7px; cursor:pointer; font-size:13px; text-align:center; transition:all .15s; }
-        .pf-mode-tab.active { background:#7c3aed; border-color:#7c3aed; color:#fff; }
-        .pf-post-search-results { background:#1a1a2e; border:1px solid #2a2a4a; border-radius:7px; max-height:180px; overflow-y:auto; display:none; }
-        .pf-post-result { padding:10px 12px; cursor:pointer; border-bottom:1px solid #2a2a4a; font-size:13px; transition:background .1s; }
+        .pf-mode-tabs { display:flex; gap:0; border:1px solid #c3c4c7; border-radius:4px; overflow:hidden; }
+        .pf-mode-tab { flex:1; padding:7px 12px; background:#f6f7f7; border:none; color:#50575e; cursor:pointer; font-size:13px; text-align:center; transition:all .15s; border-right:1px solid #c3c4c7; }
+        .pf-mode-tab:last-child { border-right:none; }
+        .pf-mode-tab.active { background:#2271b1; color:#fff; }
+        .pf-post-list { border:1px solid #c3c4c7; border-radius:4px; max-height:200px; overflow-y:auto; margin-top:6px; }
+        .pf-post-result { padding:8px 12px; cursor:pointer; border-bottom:1px solid #f0f0f1; font-size:13px; color:#1d2327; transition:background .1s; display:flex; align-items:center; gap:8px; }
         .pf-post-result:last-child { border-bottom:none; }
-        .pf-post-result:hover { background:#1f2f5a; }
-        .pf-post-result .pf-post-status { font-size:10px; color:#888; margin-left:6px; }
-        .pf-channels-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-        .pf-channel-check { display:flex; align-items:center; gap:8px; padding:8px 10px; background:#1a1a2e; border:1px solid #2a2a4a; border-radius:7px; cursor:pointer; transition:border-color .15s; }
-        .pf-channel-check.checked { border-color:#7c3aed; background:#2a1f4a; }
+        .pf-post-result:hover { background:#f0f6fc; }
+        .pf-post-result.selected { background:#f0f6fc; font-weight:600; }
+        .pf-post-result .pf-post-status { font-size:10px; color:#646970; background:#f0f0f1; padding:1px 5px; border-radius:3px; flex-shrink:0; }
+        .pf-post-result-title { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .pf-channels-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+        .pf-channel-check { display:flex; align-items:center; gap:8px; padding:7px 10px; background:#f6f7f7; border:1px solid #c3c4c7; border-radius:4px; cursor:pointer; transition:all .15s; user-select:none; }
+        .pf-channel-check:hover { background:#f0f6fc; border-color:#2271b1; }
+        .pf-channel-check.checked { background:#f0f6fc; border-color:#2271b1; }
         .pf-channel-check input { width:auto; margin:0; }
-        .pf-channel-check .pf-avatar { width:28px; height:28px; font-size:11px; }
-        .pf-channel-check-name { font-size:12px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .pf-modal-footer { padding:16px 24px 20px; border-top:1px solid #2a2a4a; display:flex; align-items:center; justify-content:space-between; gap:12px; }
-        .pf-modal-footer .pf-btn-primary { flex:1; }
-        .pf-delete-btn { background:none; border:1px solid #3a1a1a; color:#f87171; border-radius:7px; padding:8px 14px; cursor:pointer; font-size:13px; transition:all .15s; }
-        .pf-delete-btn:hover { background:#3a1a1a; }
-        .pf-loading { text-align:center; padding:30px; color:#888; }
-        .pf-no-channels { padding:20px; color:#888; font-size:13px; text-align:center; }
-
-        /* ── Time indicator ── */
-        .pf-now-line { position:absolute; left:0; right:0; height:2px; background:#7c3aed; z-index:8; pointer-events:none; }
-        .pf-now-line::before { content:''; position:absolute; left:-4px; top:-4px; width:10px; height:10px; border-radius:50%; background:#7c3aed; }
+        .pf-channel-check .pf-avatar { width:26px; height:26px; font-size:10px; }
+        .pf-channel-check-name { font-size:12px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#1d2327; }
+        .pf-modal-footer { padding:12px 20px 16px; border-top:1px solid #c3c4c7; display:flex; align-items:center; justify-content:space-between; gap:12px; background:#f6f7f7; }
+        .pf-modal-footer .pf-btn-primary { padding:8px 20px; }
+        .pf-delete-btn { background:none; border:1px solid #d63638; color:#d63638; border-radius:4px; padding:7px 14px; cursor:pointer; font-size:13px; transition:all .15s; }
+        .pf-delete-btn:hover { background:#d63638; color:#fff; }
+        .pf-loading { text-align:center; padding:40px; color:#50575e; }
         </style>
 
     <?php
-    // Build channels JSON for JS.
     $channels_js = array();
     foreach ( $mappings as $key => $m ) {
-        $type  = isset( $m['type'] ) ? $m['type'] : 'wordpress';
-        $name  = isset( $m['name'] ) ? $m['name'] : $key;
-        $color = isset( $platform_colors[ $type ] ) ? $platform_colors[ $type ]['bg'] : '#555';
-        $badge = isset( $platform_colors[ $type ] ) ? $platform_colors[ $type ]['label'] : '?';
-
+        $type      = isset( $m['type'] ) ? $m['type'] : 'wordpress';
+        $name      = isset( $m['name'] ) ? $m['name'] : $key;
+        $color     = isset( $platform_colors[ $type ] ) ? $platform_colors[ $type ]['bg'] : '#555';
+        $badge     = isset( $platform_colors[ $type ] ) ? $platform_colors[ $type ]['label'] : '?';
         $connected = false;
-        if ( 'linkedin' === $type ) {
-            $connected = ! empty( $m['access_token'] );
-        } elseif ( 'x' === $type ) {
-            $connected = ! empty( $m['access_token'] );
-        } elseif ( 'meta' === $type ) {
-            $connected = ! empty( $m['access_token'] ) && ! empty( $m['page_id'] );
-        } elseif ( 'wordpress' === $type ) {
-            $connected = ! empty( $m['user'] ) && ! empty( $m['password'] );
-        }
-
-        $channels_js[] = array(
-            'key'       => $key,
-            'name'      => $name,
-            'type'      => $type,
-            'color'     => $color,
-            'badge'     => $badge,
-            'connected' => $connected,
-        );
+        if ( 'linkedin' === $type )       { $connected = ! empty( $m['access_token'] ); }
+        elseif ( 'x' === $type )          { $connected = ! empty( $m['access_token'] ); }
+        elseif ( 'meta' === $type )       { $connected = ! empty( $m['access_token'] ) && ! empty( $m['page_id'] ); }
+        elseif ( 'wordpress' === $type )  { $connected = ! empty( $m['user'] ) && ! empty( $m['password'] ); }
+        $channels_js[] = array( 'key' => $key, 'name' => $name, 'type' => $type, 'color' => $color, 'badge' => $badge, 'connected' => $connected );
     }
     ?>
 
         <div class="pf-sidebar">
-            <h3><?php esc_html_e( 'Channels', 'post-forwarder' ); ?></h3>
-            <ul class="pf-channel-list" id="pf-channel-list">
+            <div class="pf-sidebar-head">
+                <h3><?php esc_html_e( 'Channels', 'post-forwarder' ); ?></h3>
+            </div>
+            <ul class="pf-channel-list">
                 <?php if ( empty( $mappings ) ) : ?>
                     <li class="pf-no-channels"><?php esc_html_e( 'No channels configured yet.', 'post-forwarder' ); ?></li>
                 <?php else : ?>
                     <?php foreach ( $mappings as $key => $m ) :
-                        $type  = isset( $m['type'] ) ? $m['type'] : 'wordpress';
-                        $name  = isset( $m['name'] ) ? $m['name'] : $key;
-                        $color = isset( $platform_colors[ $type ] ) ? $platform_colors[ $type ]['bg'] : '#555';
-                        $badge = isset( $platform_colors[ $type ] ) ? $platform_colors[ $type ]['label'] : '?';
-                        $letter = strtoupper( mb_substr( $name, 0, 1 ) );
+                        $type      = isset( $m['type'] ) ? $m['type'] : 'wordpress';
+                        $name      = isset( $m['name'] ) ? $m['name'] : $key;
+                        $color     = isset( $platform_colors[ $type ] ) ? $platform_colors[ $type ]['bg'] : '#555';
+                        $badge_lbl = isset( $platform_colors[ $type ] ) ? $platform_colors[ $type ]['label'] : '?';
+                        $letter    = strtoupper( mb_substr( $name, 0, 1 ) );
+                        $connected = false;
+                        if ( 'linkedin' === $type )      { $connected = ! empty( $m['access_token'] ); }
+                        elseif ( 'x' === $type )         { $connected = ! empty( $m['access_token'] ); }
+                        elseif ( 'meta' === $type )      { $connected = ! empty( $m['access_token'] ) && ! empty( $m['page_id'] ); }
+                        elseif ( 'wordpress' === $type ) { $connected = ! empty( $m['user'] ) && ! empty( $m['password'] ); }
                     ?>
-                    <li class="pf-channel-item" data-key="<?php echo esc_attr( $key ); ?>">
-                        <span class="pf-avatar" style="background:<?php echo esc_attr( $color ); ?>33;">
-                            <span style="color:<?php echo esc_attr( $color ); ?>"><?php echo esc_html( $letter ); ?></span>
-                            <span class="pf-platform-badge" style="background:<?php echo esc_attr( $color ); ?>"><?php echo esc_html( $badge ); ?></span>
-                        </span>
-                        <span class="pf-channel-name"><?php echo esc_html( $name ); ?></span>
+                    <li class="pf-channel-item">
+                        <div class="pf-channel-item-top">
+                            <span class="pf-avatar" style="background:<?php echo esc_attr( $color ); ?>;">
+                                <?php echo esc_html( $letter ); ?>
+                                <span class="pf-platform-badge" style="background:<?php echo esc_attr( $color ); ?>;filter:brightness(.7);"><?php echo esc_html( $badge_lbl ); ?></span>
+                            </span>
+                            <div class="pf-channel-info">
+                                <div class="pf-channel-name"><?php echo esc_html( $name ); ?></div>
+                                <div class="pf-channel-status">
+                                    <span class="pf-status-dot <?php echo $connected ? 'connected' : 'disconnected'; ?>"></span>
+                                    <span class="pf-status-text"><?php echo $connected ? esc_html__( 'Connected', 'post-forwarder' ) : esc_html__( 'Not connected', 'post-forwarder' ); ?></span>
+                                    <?php if ( ! $connected ) : ?>
+                                        <a class="pf-reconnect-link" href="<?php echo esc_url( $settings_url ); ?>"><?php esc_html_e( 'Reconnect', 'post-forwarder' ); ?></a>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
                     </li>
                     <?php endforeach; ?>
                 <?php endif; ?>
             </ul>
             <div class="pf-sidebar-actions">
                 <button class="pf-btn-primary" id="pf-new-post-btn">+ <?php esc_html_e( 'New Post', 'post-forwarder' ); ?></button>
-                <a class="pf-btn-secondary" href="<?php echo esc_url( admin_url( 'admin.php?page=post-forwarder-settings' ) ); ?>"><?php esc_html_e( 'Settings', 'post-forwarder' ); ?></a>
+                <a class="pf-btn-secondary" href="<?php echo esc_url( $settings_url ); ?>"><?php esc_html_e( 'Settings', 'post-forwarder' ); ?></a>
             </div>
         </div>
 
@@ -1178,11 +1196,12 @@ function post_forwarder_calendar_page() {
                 </div>
                 <div id="pf-mode-existing">
                     <div class="pf-field">
-                        <label><?php esc_html_e( 'Search post', 'post-forwarder' ); ?></label>
-                        <input type="text" id="pf-post-search" placeholder="<?php esc_attr_e( 'Type to search…', 'post-forwarder' ); ?>" autocomplete="off">
-                        <div class="pf-post-search-results" id="pf-post-results"></div>
+                        <label><?php esc_html_e( 'Select post', 'post-forwarder' ); ?></label>
+                        <input type="text" id="pf-post-search" placeholder="<?php esc_attr_e( 'Search by title…', 'post-forwarder' ); ?>" autocomplete="off">
+                        <div class="pf-post-list" id="pf-post-results">
+                            <div class="pf-post-result" style="color:#50575e;cursor:default;"><?php esc_html_e( 'Loading posts…', 'post-forwarder' ); ?></div>
+                        </div>
                         <input type="hidden" id="pf-post-id">
-                        <div id="pf-selected-post" style="display:none;margin-top:8px;padding:8px 10px;background:#1a1a2e;border:1px solid #2a2a4a;border-radius:7px;font-size:13px;"></div>
                     </div>
                 </div>
                 <div id="pf-mode-new" style="display:none;">
@@ -1201,26 +1220,26 @@ function post_forwarder_calendar_page() {
                 </div>
                 <div class="pf-field">
                     <label><?php esc_html_e( 'Channels', 'post-forwarder' ); ?></label>
-                    <div class="pf-channels-grid" id="pf-channels-grid">
-                        <?php if ( empty( $mappings ) ) : ?>
-                            <p style="color:#888;font-size:13px;"><?php esc_html_e( 'No channels configured. Go to Settings first.', 'post-forwarder' ); ?></p>
-                        <?php else : ?>
-                            <?php foreach ( $mappings as $key => $m ) :
-                                $type  = isset( $m['type'] ) ? $m['type'] : 'wordpress';
-                                $name  = isset( $m['name'] ) ? $m['name'] : $key;
-                                $color = isset( $platform_colors[ $type ] ) ? $platform_colors[ $type ]['bg'] : '#555';
-                                $letter = strtoupper( mb_substr( $name, 0, 1 ) );
-                            ?>
-                            <label class="pf-channel-check" data-key="<?php echo esc_attr( $key ); ?>">
-                                <input type="checkbox" name="channels[]" value="<?php echo esc_attr( $key ); ?>">
-                                <span class="pf-avatar" style="background:<?php echo esc_attr( $color ); ?>33;">
-                                    <span style="color:<?php echo esc_attr( $color ); ?>;font-size:11px;font-weight:700;"><?php echo esc_html( $letter ); ?></span>
-                                </span>
-                                <span class="pf-channel-check-name"><?php echo esc_html( $name ); ?></span>
-                            </label>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
+                    <?php if ( empty( $mappings ) ) : ?>
+                        <p style="color:#50575e;font-size:13px;margin:0;"><?php esc_html_e( 'No channels configured. Go to Settings first.', 'post-forwarder' ); ?></p>
+                    <?php else : ?>
+                    <div class="pf-channels-grid">
+                        <?php foreach ( $mappings as $key => $m ) :
+                            $type   = isset( $m['type'] ) ? $m['type'] : 'wordpress';
+                            $name   = isset( $m['name'] ) ? $m['name'] : $key;
+                            $color  = isset( $platform_colors[ $type ] ) ? $platform_colors[ $type ]['bg'] : '#555';
+                            $letter = strtoupper( mb_substr( $name, 0, 1 ) );
+                        ?>
+                        <label class="pf-channel-check" data-key="<?php echo esc_attr( $key ); ?>">
+                            <input type="checkbox" name="channels[]" value="<?php echo esc_attr( $key ); ?>">
+                            <span class="pf-avatar" style="background:<?php echo esc_attr( $color ); ?>;">
+                                <span style="font-size:11px;font-weight:700;"><?php echo esc_html( $letter ); ?></span>
+                            </span>
+                            <span class="pf-channel-check-name"><?php echo esc_html( $name ); ?></span>
+                        </label>
+                        <?php endforeach; ?>
                     </div>
+                    <?php endif; ?>
                 </div>
             </div>
             <div class="pf-modal-footer">
@@ -1237,10 +1256,9 @@ function post_forwarder_calendar_page() {
         var CHANNELS   = <?php echo wp_json_encode( $channels_js ); ?>;
         var DAYS       = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
         var MONTHS     = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        var START_HOUR = 7;   // first row
-        var END_HOUR   = 22;  // last row
+        var START_HOUR = 7;
+        var END_HOUR   = 22;
 
-        // Week state: Monday of the displayed week (Date object)
         var currentMonday = getMonday(new Date());
         var editingId     = null;
         var scheduleItems = [];
@@ -1253,223 +1271,167 @@ function post_forwarder_calendar_page() {
             m.setHours(0,0,0,0);
             return m;
         }
-
-        function addDays(d, n) {
-            var r = new Date(d);
-            r.setDate(r.getDate() + n);
-            return r;
-        }
-
-        function fmtDate(d) {
-            return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
-        }
-
+        function addDays(d, n) { var r = new Date(d); r.setDate(r.getDate() + n); return r; }
+        function fmtDate(d) { return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); }
         function pad(n) { return n < 10 ? '0'+n : ''+n; }
-
         function fmtWeekLabel(mon) {
             var sun = addDays(mon, 6);
             return MONTHS[mon.getMonth()] + ' ' + mon.getDate() + ' – ' + MONTHS[sun.getMonth()] + ' ' + sun.getDate() + ', ' + sun.getFullYear();
         }
+        function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-        // ── API helpers ──────────────────────────────────────────────────
         function apiFetch(method, path, body) {
             return fetch(REST_URL + path, {
                 method: method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-WP-Nonce': REST_NONCE,
-                },
+                headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': REST_NONCE },
                 body: body ? JSON.stringify(body) : undefined,
             }).then(function(r) { return r.json(); });
         }
 
-        // ── Render calendar grid ─────────────────────────────────────────
+        // ── Grid ─────────────────────────────────────────────────────────
         function renderGrid() {
             document.getElementById('pf-week-label').textContent = fmtWeekLabel(currentMonday);
-
-            var today = new Date();
-            today.setHours(0,0,0,0);
-
+            var today = new Date(); today.setHours(0,0,0,0);
             var wrap = document.getElementById('pf-grid-wrap');
-            var html = '<div class="pf-grid" id="pf-grid">';
-
-            // Top-left corner spacer
+            var html = '<div class="pf-grid">';
             html += '<div class="pf-time-col spacer"></div>';
-
-            // Day headers
             for (var di = 0; di < 7; di++) {
                 var day = addDays(currentMonday, di);
                 var isToday = day.getTime() === today.getTime();
-                html += '<div class="pf-day-header' + (isToday ? ' today' : '') + '">';
-                html += DAYS[di] + '<span class="pf-day-num">' + day.getDate() + '</span>';
-                html += '</div>';
+                html += '<div class="pf-day-header' + (isToday ? ' today' : '') + '">' + DAYS[di] + '<span class="pf-day-num">' + day.getDate() + '</span></div>';
             }
-
-            // Time rows
             for (var h = START_HOUR; h <= END_HOUR; h++) {
-                var label = h < 12 ? h + ' AM' : h === 12 ? '12 PM' : (h-12) + ' PM';
+                var label = h < 12 ? h+' AM' : h === 12 ? '12 PM' : (h-12)+' PM';
                 html += '<div class="pf-time-col">' + label + '</div>';
                 for (var dc = 0; dc < 7; dc++) {
-                    var slotDay = addDays(currentMonday, dc);
-                    var iso = fmtDate(slotDay) + 'T' + pad(h) + ':00';
-                    html += '<div class="pf-slot" data-datetime="' + iso + '"></div>';
+                    html += '<div class="pf-slot" data-datetime="' + fmtDate(addDays(currentMonday, dc)) + 'T' + pad(h) + ':00"></div>';
                 }
             }
-
             html += '</div>';
             wrap.innerHTML = html;
-
-            // Place items
             placeItems();
-
-            // Slot click → open modal
             wrap.addEventListener('click', function(e) {
-                var slot = e.target.closest('.pf-slot');
-                if (slot) { openModal(null, slot.dataset.datetime); }
                 var item = e.target.closest('.pf-item');
-                if (item) {
-                    e.stopPropagation();
-                    var id = parseInt(item.dataset.id, 10);
-                    var rec = scheduleItems.find(function(s) { return s.id == id; });
-                    if (rec) openModal(rec);
-                }
+                if (item) { e.stopPropagation(); var rec = scheduleItems.find(function(s){return s.id==item.dataset.id;}); if(rec) openModal(rec); return; }
+                var slot = e.target.closest('.pf-slot');
+                if (slot) openModal(null, slot.dataset.datetime);
             });
-
-            // Draw current-time line
             drawNowLine();
             setInterval(drawNowLine, 60000);
         }
 
         function placeItems() {
             scheduleItems.forEach(function(item) {
-                var dt = new Date(item.scheduled_at.replace(' ', 'T'));
+                var dt = new Date(item.scheduled_at.replace(' ','T'));
                 var dayIdx = Math.round((new Date(fmtDate(dt)).getTime() - currentMonday.getTime()) / 86400000);
                 if (dayIdx < 0 || dayIdx > 6) return;
-
-                var h = dt.getHours();
-                var m = dt.getMinutes();
+                var h = dt.getHours(), m = dt.getMinutes();
                 if (h < START_HOUR || h > END_HOUR) return;
-
-                // Find the slot cell (grid-row = h-START_HOUR+2, grid-col = dayIdx+2)
-                var rowIndex = (h - START_HOUR);
-                var slotCells = document.querySelectorAll('.pf-slot');
-                var cellIndex = rowIndex * 7 + dayIdx;
-                var cell = slotCells[cellIndex];
+                var slots = document.querySelectorAll('.pf-slot');
+                var cell  = slots[(h - START_HOUR) * 7 + dayIdx];
                 if (!cell) return;
-
-                var title = item.post_title || item.title || '(untitled)';
                 var keys  = Array.isArray(item.channel_keys) ? item.channel_keys : [];
-
+                var firstCh = keys.length ? CHANNELS.find(function(c){return c.key===keys[0];}) : null;
+                var color = firstCh ? firstCh.color : '#2271b1';
                 var badges = keys.map(function(k) {
-                    var ch = CHANNELS.find(function(c) { return c.key === k; });
-                    if (!ch) return '';
-                    return '<span class="pf-item-badge" style="background:' + ch.color + ';">' + ch.badge + '</span>';
+                    var ch = CHANNELS.find(function(c){return c.key===k;});
+                    return ch ? '<span class="pf-item-badge" style="background:rgba(0,0,0,.25)">'+ch.badge+'</span>' : '';
                 }).join('');
-
-                var pct = (m / 60) * 100;
                 var el = document.createElement('div');
-                el.className = 'pf-item status-' + (item.status || 'pending');
+                el.className = 'pf-item status-' + (item.status||'pending');
                 el.dataset.id = item.id;
-                el.style.cssText = 'top:' + pct + '%;background:' + (keys.length ? CHANNELS.find(function(c){return c.key===keys[0]}) && CHANNELS.find(function(c){return c.key===keys[0]}).color + '22' : '#7c3aed22') + ';border-left:3px solid ' + (keys.length && CHANNELS.find(function(c){return c.key===keys[0]}) ? CHANNELS.find(function(c){return c.key===keys[0]}).color : '#7c3aed') + ';color:#e8e8f0;';
-                el.innerHTML = '<span class="pf-item-badges">' + badges + '</span><span class="pf-item-label">' + escHtml(title) + '</span>';
+                el.style.cssText = 'top:'+((m/60)*100)+'%;background:'+color+';border-left:3px solid rgba(0,0,0,.2);';
+                el.innerHTML = '<span class="pf-item-badges">'+badges+'</span><span class="pf-item-label">'+escHtml(item.post_title||item.title||'(untitled)')+'</span>';
                 cell.appendChild(el);
             });
         }
 
-        function escHtml(s) {
-            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        }
-
         function drawNowLine() {
-            var existing = document.querySelector('.pf-now-line');
-            if (existing) existing.remove();
-
+            var ex = document.querySelector('.pf-now-line'); if(ex) ex.remove();
             var now = new Date();
-            var todayIdx = Math.round((new Date(fmtDate(now)).getTime() - currentMonday.getTime()) / 86400000);
-            if (todayIdx < 0 || todayIdx > 6) return;
-
-            var h = now.getHours();
-            var m = now.getMinutes();
-            if (h < START_HOUR || h > END_HOUR) return;
-
-            var slotCells = document.querySelectorAll('.pf-slot');
-            var cellIndex = (h - START_HOUR) * 7 + todayIdx;
-            var cell = slotCells[cellIndex];
+            var todayIdx = Math.round((new Date(fmtDate(now)).getTime()-currentMonday.getTime())/86400000);
+            if (todayIdx<0||todayIdx>6) return;
+            var h=now.getHours(), m=now.getMinutes();
+            if (h<START_HOUR||h>END_HOUR) return;
+            var cell = document.querySelectorAll('.pf-slot')[(h-START_HOUR)*7+todayIdx];
             if (!cell) return;
-
-            var pct = (m / 60) * 100;
             var line = document.createElement('div');
             line.className = 'pf-now-line';
-            line.style.top = pct + '%';
+            line.style.top = ((m/60)*100)+'%';
             cell.appendChild(line);
         }
 
-        // ── Load schedule data ───────────────────────────────────────────
         function loadWeek() {
             document.getElementById('pf-grid-wrap').innerHTML = '<div class="pf-loading">Loading…</div>';
-            apiFetch('GET', 'schedule?week_start=' + fmtDate(currentMonday)).then(function(data) {
+            apiFetch('GET', 'schedule?week_start='+fmtDate(currentMonday)).then(function(data) {
                 scheduleItems = Array.isArray(data) ? data : [];
                 renderGrid();
+            });
+        }
+
+        // ── Post list ─────────────────────────────────────────────────────
+        function loadPosts(q) {
+            var res = document.getElementById('pf-post-results');
+            res.innerHTML = '<div class="pf-post-result" style="color:#50575e;cursor:default;">Loading…</div>';
+            apiFetch('GET', 'posts?s='+encodeURIComponent(q)).then(function(posts) {
+                var selId = document.getElementById('pf-post-id').value;
+                if (!Array.isArray(posts) || !posts.length) {
+                    res.innerHTML = '<div class="pf-post-result" style="color:#50575e;cursor:default;">No posts found.</div>';
+                    return;
+                }
+                res.innerHTML = posts.map(function(p) {
+                    var isSel = String(p.id) === String(selId);
+                    return '<div class="pf-post-result'+(isSel?' selected':'')+'" data-id="'+p.id+'" data-title="'+escHtml(p.title)+'">'
+                        +'<span class="pf-post-result-title">'+escHtml(p.title)+'</span>'
+                        +'<span class="pf-post-status">'+p.status+'</span>'
+                        +'</div>';
+                }).join('');
+                res.querySelectorAll('.pf-post-result[data-id]').forEach(function(el) {
+                    el.addEventListener('click', function() {
+                        document.getElementById('pf-post-id').value = this.dataset.id;
+                        res.querySelectorAll('.pf-post-result').forEach(function(r){r.classList.remove('selected');});
+                        this.classList.add('selected');
+                    });
+                });
             });
         }
 
         // ── Modal ────────────────────────────────────────────────────────
         function openModal(item, prefillDatetime) {
             editingId = item ? item.id : null;
-            var overlay = document.getElementById('pf-modal-overlay');
-            overlay.classList.add('open');
-
+            document.getElementById('pf-modal-overlay').classList.add('open');
             document.getElementById('pf-modal-title').textContent = item ? '<?php echo esc_js( __( 'Edit Scheduled Post', 'post-forwarder' ) ); ?>' : '<?php echo esc_js( __( 'Schedule Post', 'post-forwarder' ) ); ?>';
             document.getElementById('pf-delete-btn').style.display = item ? '' : 'none';
-
-            // Reset form
-            document.getElementById('pf-post-search').value = '';
             document.getElementById('pf-post-id').value = '';
-            document.getElementById('pf-selected-post').style.display = 'none';
-            document.getElementById('pf-selected-post').textContent = '';
-            document.getElementById('pf-post-results').style.display = 'none';
             document.getElementById('pf-new-title').value = '';
             document.getElementById('pf-new-content').value = '';
-
-            // Reset channel checkboxes
             document.querySelectorAll('.pf-channel-check').forEach(function(el) {
-                el.classList.remove('checked');
-                el.querySelector('input').checked = false;
+                el.classList.remove('checked'); el.querySelector('input').checked = false;
             });
 
             if (item) {
-                // Prefill from existing item
-                var dt = new Date(item.scheduled_at.replace(' ', 'T'));
-                document.getElementById('pf-scheduled-at').value = fmtDate(dt) + 'T' + pad(dt.getHours()) + ':' + pad(dt.getMinutes());
-
+                var dt = new Date(item.scheduled_at.replace(' ','T'));
+                document.getElementById('pf-scheduled-at').value = fmtDate(dt)+'T'+pad(dt.getHours())+':'+pad(dt.getMinutes());
                 if (item.post_id) {
                     setMode('existing');
                     document.getElementById('pf-post-id').value = item.post_id;
-                    document.getElementById('pf-selected-post').textContent = item.post_title || item.title || '#' + item.post_id;
-                    document.getElementById('pf-selected-post').style.display = '';
                 } else {
                     setMode('new');
                     document.getElementById('pf-new-title').value = item.title || '';
                     document.getElementById('pf-new-content').value = item.content || '';
                 }
-
-                var keys = Array.isArray(item.channel_keys) ? item.channel_keys : [];
-                keys.forEach(function(k) {
-                    var lbl = document.querySelector('.pf-channel-check[data-key="' + k + '"]');
-                    if (lbl) {
-                        lbl.classList.add('checked');
-                        lbl.querySelector('input').checked = true;
-                    }
+                (Array.isArray(item.channel_keys) ? item.channel_keys : []).forEach(function(k) {
+                    var lbl = document.querySelector('.pf-channel-check[data-key="'+k+'"]');
+                    if (lbl) { lbl.classList.add('checked'); lbl.querySelector('input').checked = true; }
                 });
             } else {
                 setMode('existing');
-                if (prefillDatetime) {
-                    document.getElementById('pf-scheduled-at').value = prefillDatetime;
-                } else {
-                    var now = new Date();
-                    now.setMinutes(0); now.setSeconds(0);
-                    document.getElementById('pf-scheduled-at').value = fmtDate(now) + 'T' + pad(now.getHours()) + ':00';
-                }
+                var now2 = new Date(); now2.setMinutes(0); now2.setSeconds(0);
+                document.getElementById('pf-scheduled-at').value = prefillDatetime || (fmtDate(now2)+'T'+pad(now2.getHours())+':00');
+            }
+            // Always load post list when in existing mode
+            if (document.querySelector('.pf-mode-tab.active').dataset.mode === 'existing') {
+                loadPosts(document.getElementById('pf-post-search').value || '');
             }
         }
 
@@ -1479,132 +1441,61 @@ function post_forwarder_calendar_page() {
         }
 
         function setMode(mode) {
-            document.querySelectorAll('.pf-mode-tab').forEach(function(t) {
-                t.classList.toggle('active', t.dataset.mode === mode);
-            });
-            document.getElementById('pf-mode-existing').style.display = mode === 'existing' ? '' : 'none';
-            document.getElementById('pf-mode-new').style.display      = mode === 'new'      ? '' : 'none';
+            document.querySelectorAll('.pf-mode-tab').forEach(function(t){t.classList.toggle('active', t.dataset.mode===mode);});
+            document.getElementById('pf-mode-existing').style.display = mode==='existing' ? '' : 'none';
+            document.getElementById('pf-mode-new').style.display      = mode==='new'      ? '' : 'none';
+            if (mode === 'existing') loadPosts(document.getElementById('pf-post-search').value || '');
         }
 
-        // ── Save ─────────────────────────────────────────────────────────
         function saveModal() {
             var mode     = document.querySelector('.pf-mode-tab.active').dataset.mode;
             var dateVal  = document.getElementById('pf-scheduled-at').value;
-            var channels = Array.from(document.querySelectorAll('.pf-channel-check input:checked')).map(function(i){ return i.value; });
-
-            if (!dateVal) { alert('<?php echo esc_js( __( 'Please set a date and time.', 'post-forwarder' ) ); ?>'); return; }
+            var channels = Array.from(document.querySelectorAll('.pf-channel-check input:checked')).map(function(i){return i.value;});
+            if (!dateVal)      { alert('<?php echo esc_js( __( 'Please set a date and time.', 'post-forwarder' ) ); ?>'); return; }
             if (!channels.length) { alert('<?php echo esc_js( __( 'Please select at least one channel.', 'post-forwarder' ) ); ?>'); return; }
-
             var body = { scheduled_at: dateVal, channel_keys: channels };
-
             if (mode === 'existing') {
                 var pid = document.getElementById('pf-post-id').value;
-                if (!pid) { alert('<?php echo esc_js( __( 'Please select a post.', 'post-forwarder' ) ); ?>'); return; }
+                if (!pid) { alert('<?php echo esc_js( __( 'Please select a post from the list.', 'post-forwarder' ) ); ?>'); return; }
                 body.post_id = parseInt(pid, 10);
             } else {
                 body.title   = document.getElementById('pf-new-title').value;
                 body.content = document.getElementById('pf-new-content').value;
                 if (!body.title && !body.content) { alert('<?php echo esc_js( __( 'Please enter a title or content.', 'post-forwarder' ) ); ?>'); return; }
             }
-
-            var saveBtn = document.getElementById('pf-save-btn');
-            saveBtn.textContent = '<?php echo esc_js( __( 'Saving…', 'post-forwarder' ) ); ?>';
-            saveBtn.disabled = true;
-
-            var promise = editingId
-                ? apiFetch('PUT',    'schedule/' + editingId, body)
-                : apiFetch('POST',   'schedule', body);
-
-            promise.then(function() {
-                closeModal();
-                loadWeek();
-            }).catch(function() {
-                alert('<?php echo esc_js( __( 'Save failed. Please try again.', 'post-forwarder' ) ); ?>');
-            }).finally(function() {
-                saveBtn.textContent = '<?php echo esc_js( __( 'Save', 'post-forwarder' ) ); ?>';
-                saveBtn.disabled = false;
-            });
+            var btn = document.getElementById('pf-save-btn');
+            btn.textContent = '<?php echo esc_js( __( 'Saving…', 'post-forwarder' ) ); ?>';
+            btn.disabled = true;
+            (editingId ? apiFetch('PUT','schedule/'+editingId,body) : apiFetch('POST','schedule',body))
+            .then(function() { closeModal(); loadWeek(); })
+            .catch(function() { alert('<?php echo esc_js( __( 'Save failed. Please try again.', 'post-forwarder' ) ); ?>'); })
+            .finally(function() { btn.textContent='<?php echo esc_js( __( 'Save', 'post-forwarder' ) ); ?>'; btn.disabled=false; });
         }
 
         function deleteItem() {
-            if (!editingId) return;
-            if (!confirm('<?php echo esc_js( __( 'Delete this scheduled post?', 'post-forwarder' ) ); ?>')) return;
-            apiFetch('DELETE', 'schedule/' + editingId).then(function() {
-                closeModal();
-                loadWeek();
-            });
+            if (!editingId || !confirm('<?php echo esc_js( __( 'Delete this scheduled post?', 'post-forwarder' ) ); ?>')) return;
+            apiFetch('DELETE','schedule/'+editingId).then(function(){closeModal();loadWeek();});
         }
 
-        // ── Post search ──────────────────────────────────────────────────
-        document.getElementById('pf-post-search').addEventListener('input', function() {
-            var q = this.value;
-            clearTimeout(searchTimer);
-            if (!q) { document.getElementById('pf-post-results').style.display = 'none'; return; }
-            searchTimer = setTimeout(function() {
-                apiFetch('GET', 'posts?s=' + encodeURIComponent(q)).then(function(posts) {
-                    var res = document.getElementById('pf-post-results');
-                    if (!posts.length) { res.innerHTML = '<div class="pf-post-result" style="color:#888;">No posts found</div>'; }
-                    else {
-                        res.innerHTML = posts.map(function(p) {
-                            return '<div class="pf-post-result" data-id="' + p.id + '" data-title="' + escHtml(p.title) + '">'
-                                + escHtml(p.title)
-                                + '<span class="pf-post-status">' + p.status + '</span>'
-                                + '</div>';
-                        }).join('');
-                    }
-                    res.style.display = '';
-                    res.querySelectorAll('.pf-post-result[data-id]').forEach(function(el) {
-                        el.addEventListener('click', function() {
-                            document.getElementById('pf-post-id').value = this.dataset.id;
-                            document.getElementById('pf-post-search').value = '';
-                            document.getElementById('pf-post-results').style.display = 'none';
-                            var sel = document.getElementById('pf-selected-post');
-                            sel.textContent = this.dataset.title;
-                            sel.style.display = '';
-                        });
-                    });
-                });
-            }, 300);
-        });
-
-        // ── Event wiring ─────────────────────────────────────────────────
-        document.getElementById('pf-prev-week').addEventListener('click', function() {
-            currentMonday = addDays(currentMonday, -7);
-            loadWeek();
-        });
-        document.getElementById('pf-next-week').addEventListener('click', function() {
-            currentMonday = addDays(currentMonday, 7);
-            loadWeek();
-        });
-        document.getElementById('pf-today-btn').addEventListener('click', function() {
-            currentMonday = getMonday(new Date());
-            loadWeek();
-        });
-        document.getElementById('pf-new-post-btn').addEventListener('click', function() { openModal(null); });
+        // ── Events ───────────────────────────────────────────────────────
+        document.getElementById('pf-prev-week').addEventListener('click', function(){currentMonday=addDays(currentMonday,-7);loadWeek();});
+        document.getElementById('pf-next-week').addEventListener('click', function(){currentMonday=addDays(currentMonday,7);loadWeek();});
+        document.getElementById('pf-today-btn').addEventListener('click', function(){currentMonday=getMonday(new Date());loadWeek();});
+        document.getElementById('pf-new-post-btn').addEventListener('click', function(){openModal(null);});
         document.getElementById('pf-modal-close').addEventListener('click', closeModal);
-        document.getElementById('pf-modal-overlay').addEventListener('click', function(e) {
-            if (e.target === this) closeModal();
-        });
+        document.getElementById('pf-modal-overlay').addEventListener('click', function(e){if(e.target===this)closeModal();});
         document.getElementById('pf-save-btn').addEventListener('click', saveModal);
         document.getElementById('pf-delete-btn').addEventListener('click', deleteItem);
-
-        document.querySelectorAll('.pf-mode-tab').forEach(function(tab) {
-            tab.addEventListener('click', function() { setMode(this.dataset.mode); });
+        document.querySelectorAll('.pf-mode-tab').forEach(function(tab){tab.addEventListener('click',function(){setMode(this.dataset.mode);});});
+        document.querySelectorAll('.pf-channel-check').forEach(function(lbl){
+            lbl.addEventListener('click', function(){var cb=this.querySelector('input');cb.checked=!cb.checked;this.classList.toggle('checked',cb.checked);});
         });
-
-        document.querySelectorAll('.pf-channel-check').forEach(function(lbl) {
-            lbl.addEventListener('click', function() {
-                var cb = this.querySelector('input');
-                cb.checked = !cb.checked;
-                this.classList.toggle('checked', cb.checked);
-            });
+        document.getElementById('pf-post-search').addEventListener('input', function(){
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(function(){loadPosts(document.getElementById('pf-post-search').value);}, 300);
         });
+        document.addEventListener('keydown', function(e){if(e.key==='Escape')closeModal();});
 
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') closeModal();
-        });
-
-        // ── Init ─────────────────────────────────────────────────────────
         loadWeek();
     })();
     </script>
