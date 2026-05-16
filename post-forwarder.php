@@ -1433,17 +1433,14 @@ function post_forwarding_settings_page() {
                         }
 
                         $is_meta_connected = $is_meta && ! empty( $mapping['access_token'] ) && ! empty( $mapping['page_id'] );
-                        $meta_connect_url  = '';
-                        if ( $is_meta && ! empty( $mapping['app_id'] ) && ! empty( $mapping['app_secret'] ) ) {
-                            $meta_nonce_link   = wp_create_nonce( 'meta_auth_' . $key );
-                            $meta_callback_url = admin_url( 'options-general.php?page=post-forwarding&meta_oauth_callback=1' );
-                            $meta_connect_url  = 'https://www.facebook.com/v21.0/dialog/oauth?' . http_build_query( array(
-                                'client_id'    => $mapping['app_id'],
-                                'redirect_uri' => $meta_callback_url,
-                                'scope'        => 'pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish',
-                                'state'        => $key . '|' . $meta_nonce_link,
-                            ) );
-                        }
+                        $meta_relay_val    = post_forwarder_relay_url();
+                        $meta_connect_url  = ( $is_meta && $meta_relay_val )
+                            ? $meta_relay_val . '/meta/start?' . http_build_query( array(
+                                'return_url' => admin_url( 'options-general.php?page=post-forwarding' ),
+                                'portal_key' => $key,
+                                'wp_nonce'   => wp_create_nonce( 'meta_oauth_' . $key ),
+                            ) )
+                            : '';
 
                         $is_x           = ( 'x' === $mapping_type );
                         $is_x_connected = $is_x
