@@ -1284,13 +1284,13 @@ function post_forwarder_calendar_page() {
 
         // ── Grid ─────────────────────────────────────────────────────────
         function renderGrid() {
-            document.getElementById('pf-week-label').textContent = fmtWeekLabel(currentMonday);
+            document.getElementById('pf-week-label').textContent = fmtWeekLabel(currentStart);
             var today = new Date(); today.setHours(0,0,0,0);
             var wrap = document.getElementById('pf-grid-wrap');
             var html = '<div class="pf-grid">';
             html += '<div class="pf-time-col spacer"></div>';
             for (var di = 0; di < 7; di++) {
-                var day = addDays(currentMonday, di);
+                var day = addDays(currentStart, di);
                 var isToday = day.getTime() === today.getTime();
                 html += '<div class="pf-day-header' + (isToday ? ' today' : '') + '">' + DAYS[di] + '<span class="pf-day-num">' + day.getDate() + '</span></div>';
             }
@@ -1298,7 +1298,7 @@ function post_forwarder_calendar_page() {
                 var label = h < 12 ? h+' AM' : h === 12 ? '12 PM' : (h-12)+' PM';
                 html += '<div class="pf-time-col">' + label + '</div>';
                 for (var dc = 0; dc < 7; dc++) {
-                    html += '<div class="pf-slot" data-datetime="' + fmtDate(addDays(currentMonday, dc)) + 'T' + pad(h) + ':00"></div>';
+                    html += '<div class="pf-slot" data-datetime="' + fmtDate(addDays(currentStart, dc)) + 'T' + pad(h) + ':00"></div>';
                 }
             }
             html += '</div>';
@@ -1317,7 +1317,7 @@ function post_forwarder_calendar_page() {
         function placeItems() {
             scheduleItems.forEach(function(item) {
                 var dt = new Date(item.scheduled_at.replace(' ','T') + 'Z'); // stored UTC
-                var dayIdx = Math.round((new Date(fmtDate(dt)).getTime() - currentMonday.getTime()) / 86400000);
+                var dayIdx = Math.round((new Date(fmtDate(dt)).getTime() - currentStart.getTime()) / 86400000);
                 if (dayIdx < 0 || dayIdx > 6) return;
                 var h = dt.getHours(), m = dt.getMinutes();
                 if (h < START_HOUR || h > END_HOUR) return;
@@ -1343,7 +1343,7 @@ function post_forwarder_calendar_page() {
         function drawNowLine() {
             var ex = document.querySelector('.pf-now-line'); if(ex) ex.remove();
             var now = new Date();
-            var todayIdx = Math.round((new Date(fmtDate(now)).getTime()-currentMonday.getTime())/86400000);
+            var todayIdx = Math.round((new Date(fmtDate(now)).getTime()-currentStart.getTime())/86400000);
             if (todayIdx<0||todayIdx>6) return;
             var h=now.getHours(), m=now.getMinutes();
             if (h<START_HOUR||h>END_HOUR) return;
@@ -1357,7 +1357,7 @@ function post_forwarder_calendar_page() {
 
         function loadWeek() {
             document.getElementById('pf-grid-wrap').innerHTML = '<div class="pf-loading">Loading…</div>';
-            apiFetch('GET', 'schedule?week_start='+fmtDate(currentMonday)).then(function(data) {
+            apiFetch('GET', 'schedule?week_start='+fmtDate(currentStart)).then(function(data) {
                 scheduleItems = Array.isArray(data) ? data : [];
                 renderGrid();
             });
@@ -1475,9 +1475,9 @@ function post_forwarder_calendar_page() {
         }
 
         // ── Events ───────────────────────────────────────────────────────
-        document.getElementById('pf-prev-week').addEventListener('click', function(){currentMonday=addDays(currentMonday,-7);loadWeek();});
-        document.getElementById('pf-next-week').addEventListener('click', function(){currentMonday=addDays(currentMonday,7);loadWeek();});
-        document.getElementById('pf-today-btn').addEventListener('click', function(){currentMonday=getMonday(new Date());loadWeek();});
+        document.getElementById('pf-prev-week').addEventListener('click', function(){currentStart=addDays(currentStart,-7);loadWeek();});
+        document.getElementById('pf-next-week').addEventListener('click', function(){currentStart=addDays(currentStart,7);loadWeek();});
+        document.getElementById('pf-today-btn').addEventListener('click', function(){currentStart=getMonday(new Date());loadWeek();});
         document.getElementById('pf-new-post-btn').addEventListener('click', function(){openModal(null);});
         document.getElementById('pf-modal-close').addEventListener('click', closeModal);
         document.getElementById('pf-modal-overlay').addEventListener('click', function(e){if(e.target===this)closeModal();});
