@@ -1453,7 +1453,9 @@ function post_forwarder_calendar_page() {
             var channels = Array.from(document.querySelectorAll('.pf-channel-check input:checked')).map(function(i){return i.value;});
             if (!dateVal)      { alert('<?php echo esc_js( __( 'Please set a date and time.', 'post-forwarder' ) ); ?>'); return; }
             if (!channels.length) { alert('<?php echo esc_js( __( 'Please select at least one channel.', 'post-forwarder' ) ); ?>'); return; }
-            var body = { scheduled_at: dateVal, channel_keys: channels };
+            // Convert browser local time to UTC ISO string for consistent server-side storage.
+            var dateUTC = new Date(dateVal).toISOString();
+            var body = { scheduled_at: dateUTC, channel_keys: channels };
             if (mode === 'existing') {
                 var pid = document.getElementById('pf-post-id').value;
                 if (!pid) { alert('<?php echo esc_js( __( 'Please select a post from the list.', 'post-forwarder' ) ); ?>'); return; }
