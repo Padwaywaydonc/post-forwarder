@@ -1418,6 +1418,12 @@ function post_forwarder_calendar_page() {
             document.getElementById('pf-post-id').value = '';
             document.getElementById('pf-new-title').value = '';
             document.getElementById('pf-new-content').value = '';
+            document.getElementById('pf-new-thumb-file').value = '';
+            document.getElementById('pf-new-thumb-url').value = '';
+            document.getElementById('pf-thumb-preview').style.display = 'none';
+            document.getElementById('pf-thumb-preview').src = '';
+            document.getElementById('pf-thumb-hint').style.display = '';
+            document.getElementById('pf-thumb-clear').style.display = 'none';
             document.querySelectorAll('.pf-channel-check').forEach(function(el) {
                 el.classList.remove('checked'); el.querySelector('input').checked = false;
             });
