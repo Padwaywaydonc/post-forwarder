@@ -1615,6 +1615,7 @@ function post_forwarding_settings_page() {
                                             <option value="wordpress" <?php selected($mapping_type, 'wordpress'); ?>><?php esc_html_e('WordPress Portal', 'post-forwarder'); ?></option>
                                             <option value="linkedin"  <?php selected($mapping_type, 'linkedin');   ?>><?php esc_html_e('LinkedIn Account',  'post-forwarder'); ?></option>
                                             <option value="x"         <?php selected($mapping_type, 'x');         ?>><?php esc_html_e('X (Twitter) Account', 'post-forwarder'); ?></option>
+                                            <option value="meta"      <?php selected($mapping_type, 'meta');      ?>><?php esc_html_e('Meta (Facebook + Instagram)', 'post-forwarder'); ?></option>
                                         </select>
                                     </td>
                                 </tr>
