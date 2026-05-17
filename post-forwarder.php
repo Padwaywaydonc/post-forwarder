@@ -266,4 +266,5 @@ register_deactivation_hook( __FILE__, function () {
     }
 
     wp_clear_scheduled_hook( 'post_forwarder_run_schedule' );
+    wp_clear_scheduled_hook( 'post_forwarder_refresh_x_tokens' );
 } );
