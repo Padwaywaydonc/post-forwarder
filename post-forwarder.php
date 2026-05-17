@@ -106,8 +106,12 @@ add_filter( 'cron_schedules', function ( $schedules ) {
     return $schedules;
 } );
 
-// Execute scheduled items.
+// Execute scheduled items (WP-Cron path).
 add_action( 'post_forwarder_run_schedule', 'post_forwarder_execute_schedule' );
+
+// Self-trigger: run schedule on any page request when items are due.
+// Works even on zero-traffic sites — any visit (bot, health check, admin) counts.
+add_action( 'init', 'post_forwarder_maybe_run_schedule' );
 
 // Proactively refresh X tokens before they expire.
 add_action( 'post_forwarder_refresh_x_tokens', 'post_forwarder_refresh_x_tokens' );
