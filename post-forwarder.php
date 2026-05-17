@@ -109,6 +109,9 @@ add_filter( 'cron_schedules', function ( $schedules ) {
 // Execute scheduled items.
 add_action( 'post_forwarder_run_schedule', 'post_forwarder_execute_schedule' );
 
+// Proactively refresh X tokens before they expire.
+add_action( 'post_forwarder_refresh_x_tokens', 'post_forwarder_refresh_x_tokens' );
+
 // Admin menu
 add_action( 'admin_menu', function () {
     add_menu_page(
