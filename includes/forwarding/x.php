@@ -175,3 +175,71 @@ function post_forwarder_forward_to_x( $post, $mapping, $portal_key ) {
     }
     return array('success' => false, 'message' => $err_msg);
 }
+
+/**
+ * Proactively refresh X access tokens that expire within the next 30 minutes.
+ * Runs hourly via WP-Cron so tokens are always valid when a scheduled post fires.
+ */
+function post_forwarder_refresh_x_tokens() {
+    $relay = post_forwarder_relay_url();
+    if ( ! $relay ) {
+        return;
+    }
+
+    $options = get_option( 'post_forwarding_options', array() );
+    if ( is_string( $options ) ) {
+        $options = json_decode( $options, true ) ?: array();
+    }
+    $mappings_raw = isset( $options['mappings'] ) ? $options['mappings'] : array();
+    $mappings = is_array( $mappings_raw )
+        ? $mappings_raw
+        : ( json_decode( is_string( $mappings_raw ) ? $mappings_raw : '{}', true ) ?: array() );
+
+    $updated = false;
+    foreach ( $mappings as $key => &$m ) {
+        if ( ( isset( $m['type'] ) ? $m['type'] : '' ) !== 'x' ) {
+            continue;
+        }
+        if ( empty( $m['access_token'] ) || empty( $m['refresh_token'] ) ) {
+            continue;
+        }
+        // Refresh if the token expires within 30 minutes.
+        $expires = isset( $m['token_expires'] ) ? (int) $m['token_expires'] : 0;
+        if ( $expires > time() + 1800 ) {
+            continue;
+        }
+
+        $resp = wp_remote_post(
+            $relay . '/x/refresh',
+            array(
+                'headers' => array( 'Content-Type' => 'application/json' ),
+                'body'    => wp_json_encode( array( 'refresh_token' => $m['refresh_token'] ) ),
+                'timeout' => 20,
+            )
+        );
+
+        if ( is_wp_error( $resp ) || 200 !== wp_remote_retrieve_response_code( $resp ) ) {
+            post_forwarder_log_error( 'Proactive X token refresh failed for portal "' . $key . '": ' . ( is_wp_error( $resp ) ? $resp->get_error_message() : wp_remote_retrieve_body( $resp ) ) );
+            continue;
+        }
+
+        $data = json_decode( wp_remote_retrieve_body( $resp ), true );
+        if ( empty( $data['access_token'] ) ) {
+            continue;
+        }
+
+        $m['access_token']  = $data['access_token'];
+        $m['token_expires'] = time() + (int) ( isset( $data['expires_in'] ) ? $data['expires_in'] : 7200 );
+        if ( ! empty( $data['refresh_token'] ) ) {
+            $m['refresh_token'] = $data['refresh_token'];
+        }
+        $updated = true;
+        post_forwarder_log_error( 'Proactive X token refresh succeeded for portal "' . $key . '".' );
+    }
+    unset( $m );
+
+    if ( $updated ) {
+        $options['mappings'] = wp_json_encode( $mappings );
+        update_option( 'post_forwarding_options', $options );
+    }
+}
