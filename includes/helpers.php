@@ -35,25 +35,14 @@ function post_forwarder_linkedin_client_secret( $fallback = '' ) {
 }
 
 /**
- * Return the configured OAuth relay URL (trailing slash stripped), or an
- * empty string when no relay is set up.
- *
- * Set the constant POST_FORWARDER_RELAY_URL in wp-config.php / .env to
- * point at your deployed Cloudflare Worker, e.g.:
- *   define( 'POST_FORWARDER_RELAY_URL', 'https://post-forwarder-relay.your-subdomain.workers.dev' );
+ * Return the OAuth relay URL (trailing slash stripped).
+ * Override with the POST_FORWARDER_RELAY_URL constant if you fork the relay.
  *
  * @return string
  */
 function post_forwarder_relay_url() {
     if ( defined( 'POST_FORWARDER_RELAY_URL' ) && POST_FORWARDER_RELAY_URL ) {
         return rtrim( POST_FORWARDER_RELAY_URL, '/' );
-    }
-    $opts = get_option( 'post_forwarding_options', array() );
-    if ( is_string( $opts ) ) {
-        $opts = json_decode( $opts, true ) ?: array();
-    }
-    if ( ! empty( $opts['relay_url'] ) ) {
-        return rtrim( $opts['relay_url'], '/' );
     }
     return 'https://post-forwarder-relay.sylwesterulatowski.workers.dev';
 }
