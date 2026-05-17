@@ -215,6 +215,9 @@ add_action( 'plugins_loaded', function () {
     if ( ! wp_next_scheduled( 'post_forwarder_run_schedule' ) ) {
         wp_schedule_event( time(), 'pf_every_minute', 'post_forwarder_run_schedule' );
     }
+    if ( ! wp_next_scheduled( 'post_forwarder_refresh_x_tokens' ) ) {
+        wp_schedule_event( time(), 'hourly', 'post_forwarder_refresh_x_tokens' );
+    }
 } );
 
 // Plugin activation hook
@@ -227,6 +230,9 @@ register_activation_hook( __FILE__, function () {
     post_forwarder_create_schedule_table();
     if ( ! wp_next_scheduled( 'post_forwarder_run_schedule' ) ) {
         wp_schedule_event( time(), 'pf_every_minute', 'post_forwarder_run_schedule' );
+    }
+    if ( ! wp_next_scheduled( 'post_forwarder_refresh_x_tokens' ) ) {
+        wp_schedule_event( time(), 'hourly', 'post_forwarder_refresh_x_tokens' );
     }
 } );
 
