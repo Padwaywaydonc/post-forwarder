@@ -30,6 +30,53 @@ function post_forwarder_create_schedule_table() {
     update_option( 'pf_schedule_db_version', '1.0' );
 }
 
+/**
+ * Called on every page request. If items are due, runs the schedule either:
+ *  - after the response is sent (PHP-FPM + fastcgi_finish_request — truly non-blocking), or
+ *  - via an async non-blocking loopback to wp-cron.php (fallback).
+ *
+ * A 55-second transient lock prevents this from running more than once per minute,
+ * so the overhead per request is just one transient GET on cache (sub-millisecond).
+ */
+function post_forwarder_maybe_run_schedule() {
+    // Skip during cron, AJAX, REST, and WP-CLI to avoid recursion.
+    if (
+        ( defined( 'DOING_CRON' )  && DOING_CRON )  ||
+        ( defined( 'DOING_AJAX' )  && DOING_AJAX )  ||
+        ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ||
+        ( defined( 'WP_CLI' )      && WP_CLI )
+    ) {
+        return;
+    }
+
+    // Already ran within the last minute.
+    if ( get_transient( 'pf_run_lock' ) ) {
+        return;
+    }
+
+    global $wpdb;
+    $table = $wpdb->prefix . 'pf_schedule';
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+    $due = (int) $wpdb->get_var( $wpdb->prepare(
+        "SELECT COUNT(*) FROM {$table} WHERE status = 'pending' AND scheduled_at <= %s LIMIT 1",
+        current_time( 'mysql', true )
+    ) );
+
+    if ( ! $due ) {
+        return;
+    }
+
+    set_transient( 'pf_run_lock', 1, 55 );
+
+    add_action( 'shutdown', static function () {
+        // On PHP-FPM: send the response to the browser first, then process.
+        if ( function_exists( 'fastcgi_finish_request' ) ) {
+            fastcgi_finish_request();
+        }
+        post_forwarder_execute_schedule();
+    } );
+}
+
 function post_forwarder_execute_schedule() {
     global $wpdb;
     $table = $wpdb->prefix . 'pf_schedule';
