@@ -23,7 +23,7 @@ Post Forwarder lets you syndicate content from one WordPress site to any combina
 
 **Relay Server**
 
-LinkedIn, X, and Meta require a relay server (a small Cloudflare Worker) that holds your OAuth app credentials so they never appear in the WordPress admin. The relay is open-source and you deploy your own instance — see the Installation section.
+LinkedIn, X, and Meta OAuth flows are handled by a shared relay server maintained by the plugin developer. No setup is required — the relay works out of the box. Advanced users who want full control can self-host the open-source relay; see the Installation section.
 
 == Platform Requirements & Limitations ==
 
