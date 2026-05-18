@@ -832,9 +832,11 @@ function post_forwarder_settings_page() {
                             ) );
                         }
 
-                        $is_meta_connected = $is_meta && ! empty( $mapping['access_token'] ) && ! empty( $mapping['page_id'] );
+                        $is_meta_connected      = $is_meta      && ! empty( $mapping['access_token'] ) && ! empty( $mapping['page_id'] );
+                        $is_facebook_connected  = $is_facebook  && ! empty( $mapping['access_token'] ) && ! empty( $mapping['page_id'] );
+                        $is_instagram_connected = $is_instagram && ! empty( $mapping['access_token'] ) && ! empty( $mapping['instagram_account_id'] );
                         $meta_relay_val    = post_forwarder_relay_url();
-                        $meta_connect_url  = ( $is_meta && $meta_relay_val )
+                        $meta_connect_url  = ( $is_meta_family && $meta_relay_val )
                             ? $meta_relay_val . '/meta/start?' . http_build_query( array(
                                 'return_url' => admin_url( 'admin.php?page=post-forwarder-settings' ),
                                 'portal_key' => $key,
