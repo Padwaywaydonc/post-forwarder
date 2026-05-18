@@ -80,8 +80,8 @@ add_action( 'admin_notices', function () {
         $icon  = $r['success'] ? '✓' : '✗';
         $badge = '';
         if ( isset( $r['type'] ) ) {
-            $badge_colors = array( 'linkedin' => '#0a66c2', 'x' => '#000', 'wordpress' => '#3858e9', 'meta' => '#1877f2' );
-            $badge_labels = array( 'linkedin' => 'LI', 'x' => 'X', 'wordpress' => 'WP', 'meta' => 'META' );
+            $badge_colors = array( 'linkedin' => '#0a66c2', 'x' => '#000', 'wordpress' => '#3858e9', 'meta' => '#1877f2', 'facebook' => '#1877f2', 'instagram' => '#c13584' );
+            $badge_labels = array( 'linkedin' => 'LI', 'x' => 'X', 'wordpress' => 'WP', 'meta' => 'META', 'facebook' => 'FB', 'instagram' => 'IG' );
             if ( isset( $badge_colors[ $r['type'] ] ) ) {
                 $badge = ' <span style="background:' . esc_attr( $badge_colors[ $r['type'] ] ) . ';color:#fff;font-size:10px;padding:1px 5px;border-radius:3px;">' . esc_html( $badge_labels[ $r['type'] ] ) . '</span>';
             }
