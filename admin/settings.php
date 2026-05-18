@@ -1185,8 +1185,49 @@ function post_forwarder_settings_page() {
                                         <?php endif; ?>
                                     </td>
                                 </tr>
+                                <tr class="fields-facebook" <?php echo $is_facebook ? '' : 'style="display:none;"'; ?>>
+                                    <th><?php esc_html_e( 'Connection', 'post-forwarder' ); ?></th>
+                                    <td>
+                                        <?php if ( $is_facebook_connected ) : ?>
+                                            <span style="color:#00a32a;font-weight:600;">&#10003; <?php esc_html_e( 'Connected', 'post-forwarder' ); ?></span>
+                                            <span style="color:#666;font-size:12px;margin-left:8px;"><?php echo esc_html( isset( $mapping['page_name'] ) ? $mapping['page_name'] : '' ); ?></span>
+                                            <?php if ( $meta_connect_url ) : ?>
+                                                <a href="<?php echo esc_url( $meta_connect_url ); ?>" class="button button-secondary" style="margin-left:10px;"><?php esc_html_e( 'Reconnect', 'post-forwarder' ); ?></a>
+                                            <?php endif; ?>
+                                        <?php elseif ( $meta_connect_url ) : ?>
+                                            <a href="<?php echo esc_url( $meta_connect_url ); ?>" class="button" style="background:#1877f2;border-color:#1877f2;color:#fff;">&#10132; <?php esc_html_e( 'Connect with Facebook', 'post-forwarder' ); ?></a>
+                                        <?php endif; ?>
+                                        <?php if ( $is_facebook && ! empty( $mapping['last_error'] ) && ! $is_facebook_connected ) : ?>
+                                            <p class="description" style="color:#cc0000;margin-top:6px;">
+                                                <strong><?php esc_html_e( 'Last error:', 'post-forwarder' ); ?></strong>
+                                                <?php echo esc_html( $mapping['last_error'] ); ?>
+                                            </p>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                                <tr class="fields-instagram" <?php echo $is_instagram ? '' : 'style="display:none;"'; ?>>
+                                    <th><?php esc_html_e( 'Connection', 'post-forwarder' ); ?></th>
+                                    <td>
+                                        <?php if ( $is_instagram_connected ) : ?>
+                                            <span style="color:#00a32a;font-weight:600;">&#10003; <?php esc_html_e( 'Connected', 'post-forwarder' ); ?></span>
+                                            <span style="color:#666;font-size:12px;margin-left:8px;"><?php echo esc_html( isset( $mapping['page_name'] ) ? $mapping['page_name'] : '' ); ?></span>
+                                            <?php if ( $meta_connect_url ) : ?>
+                                                <a href="<?php echo esc_url( $meta_connect_url ); ?>" class="button button-secondary" style="margin-left:10px;"><?php esc_html_e( 'Reconnect', 'post-forwarder' ); ?></a>
+                                            <?php endif; ?>
+                                        <?php elseif ( $meta_connect_url ) : ?>
+                                            <a href="<?php echo esc_url( $meta_connect_url ); ?>" class="button" style="background:#c13584;border-color:#c13584;color:#fff;">&#10132; <?php esc_html_e( 'Connect with Instagram', 'post-forwarder' ); ?></a>
+                                        <?php endif; ?>
+                                        <p class="description" style="margin-top:6px;"><?php esc_html_e( 'Requires a Professional (Business/Creator) Instagram account linked to a Facebook Page you manage.', 'post-forwarder' ); ?></p>
+                                        <?php if ( $is_instagram && ! empty( $mapping['last_error'] ) && ! $is_instagram_connected ) : ?>
+                                            <p class="description" style="color:#cc0000;margin-top:6px;">
+                                                <strong><?php esc_html_e( 'Last error:', 'post-forwarder' ); ?></strong>
+                                                <?php echo esc_html( $mapping['last_error'] ); ?>
+                                            </p>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
                             </table>
-                            <button type="button" class="button test-connection" style="margin-right: 8px;<?php echo ( $is_linkedin || $is_x || $is_meta ) ? ' display:none;' : ''; ?>"><?php esc_html_e('Test Connection', 'post-forwarder'); ?></button>
+                            <button type="button" class="button test-connection" style="margin-right: 8px;<?php echo ( $is_linkedin || $is_x || $is_meta_family ) ? ' display:none;' : ''; ?>"><?php esc_html_e('Test Connection', 'post-forwarder'); ?></button>
                             <span class="connection-result" style="font-weight: 600;"></span>
                             <button type="button" class="button remove-portal" style="float: right;"><?php esc_html_e('Remove Account', 'post-forwarder'); ?></button>
                         </div><!-- end portal-detail -->
