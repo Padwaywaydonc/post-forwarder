@@ -37,7 +37,7 @@ Read this section before configuring each portal type to avoid unexpected errors
 
 = LinkedIn =
 
-* A relay server must be configured (`POST_FORWARDER_RELAY_URL` constant or the Relay URL setting).
+* The plugin uses the built-in shared relay server — no additional configuration required.
 * Your LinkedIn Developer app needs the **w_member_social** and **openid / profile** products approved.
 * LinkedIn access tokens expire after **60 days**. The plugin shows the expiry date and prompts you to reconnect when needed.
 * For organization page posts the Author URN must be set to `urn:li:organization:YOUR_ORG_ID`, and the app needs the **Community Management API** product approved by LinkedIn.
