@@ -54,7 +54,7 @@ Read this section before configuring each portal type to avoid unexpected errors
 **Facebook:**
 
 * You must have a **Facebook Page** that you administer. Posting to personal Facebook profiles via the API is not supported by Meta and has not been possible since 2018. There is no workaround.
-* A relay server must be configured.
+* The plugin uses the built-in shared relay server — no additional configuration required.
 * Your Meta Developer app must have the following permissions activated under Use Cases: `pages_show_list`, `pages_read_engagement`, `pages_manage_posts`.
 * During development, only users who are listed as admins, developers, or testers of the Meta app can authorize. To allow any user to connect, the app must go through Meta App Review.
 * Page access tokens obtained through the OAuth flow are **long-lived** (they do not expire on a short schedule like user tokens do).
