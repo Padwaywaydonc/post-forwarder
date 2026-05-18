@@ -1273,6 +1273,8 @@ function post_forwarder_settings_page() {
             $row.find('.fields-linkedin').toggle(type === 'linkedin');
             $row.find('.fields-x').toggle(type === 'x');
             $row.find('.fields-meta').toggle(type === 'meta');
+            $row.find('.fields-facebook').toggle(type === 'facebook');
+            $row.find('.fields-instagram').toggle(type === 'instagram');
             $row.find('.test-connection').toggle(type === 'wordpress');
         }
 
