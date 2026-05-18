@@ -341,8 +341,21 @@ function post_forwarder_settings_page() {
                             if ( ! is_array( $meta_cb_maps ) ) { $meta_cb_maps = array(); }
                         }
 
-                        if ( count( $meta_pages ) === 1 ) {
-                            $meta_page = $meta_pages[0];
+                        $meta_portal_type = isset( $meta_cb_maps[ $meta_portal_key ]['type'] ) ? $meta_cb_maps[ $meta_portal_key ]['type'] : 'meta';
+
+                        // For Instagram portals only show pages that have an Instagram Business account linked.
+                        $eligible_pages = ( 'instagram' === $meta_portal_type )
+                            ? array_values( array_filter( $meta_pages, static function ( $p ) {
+                                return ! empty( $p['instagram_business_account']['id'] );
+                            } ) )
+                            : $meta_pages;
+
+                        if ( 'instagram' === $meta_portal_type && empty( $eligible_pages ) ) {
+                            $meta_auth_notice = '<div class="notice notice-error is-dismissible"><p>'
+                                . esc_html__( 'Instagram connection failed: none of your Facebook Pages have an Instagram Business or Creator account linked. Link one in Facebook Page Settings → Instagram, then try again.', 'post-forwarder' )
+                                . '</p></div>';
+                        } elseif ( count( $eligible_pages ) === 1 ) {
+                            $meta_page = $eligible_pages[0];
                             $meta_cb_maps[ $meta_portal_key ]['access_token']         = $meta_page['access_token'];
                             $meta_cb_maps[ $meta_portal_key ]['page_id']              = $meta_page['id'];
                             $meta_cb_maps[ $meta_portal_key ]['page_name']            = $meta_page['name'];
@@ -351,14 +364,28 @@ function post_forwarder_settings_page() {
                             unset( $meta_cb_maps[ $meta_portal_key ]['pending_pages'] );
                             $meta_cb_opts['mappings'] = wp_json_encode( $meta_cb_maps );
                             update_option( 'post_forwarding_options', $meta_cb_opts );
-                            $ig_suffix = ! empty( $meta_cb_maps[ $meta_portal_key ]['instagram_account_id'] )
-                                ? ' ' . esc_html__( 'Instagram also linked.', 'post-forwarder' )
-                                : ' ' . esc_html__( 'No Instagram Business account on this Page.', 'post-forwarder' );
-                            $meta_auth_notice = '<div class="notice notice-success is-dismissible"><p>'
-                                . esc_html( sprintf( __( 'Connected to Facebook Page "%s".', 'post-forwarder' ), $meta_page['name'] ) )
-                                . $ig_suffix . '</p></div>';
+
+                            if ( 'instagram' === $meta_portal_type ) {
+                                $meta_auth_notice = '<div class="notice notice-success is-dismissible"><p>'
+                                    . esc_html( sprintf( __( 'Instagram connected via Facebook Page "%s".', 'post-forwarder' ), $meta_page['name'] ) )
+                                    . '</p></div>';
+                            } elseif ( 'facebook' === $meta_portal_type ) {
+                                $ig_suffix = ! empty( $meta_cb_maps[ $meta_portal_key ]['instagram_account_id'] )
+                                    ? ' ' . esc_html__( '(Instagram also available — add a separate Instagram portal to use it.)', 'post-forwarder' )
+                                    : '';
+                                $meta_auth_notice = '<div class="notice notice-success is-dismissible"><p>'
+                                    . esc_html( sprintf( __( 'Connected to Facebook Page "%s".', 'post-forwarder' ), $meta_page['name'] ) )
+                                    . $ig_suffix . '</p></div>';
+                            } else {
+                                $ig_suffix = ! empty( $meta_cb_maps[ $meta_portal_key ]['instagram_account_id'] )
+                                    ? ' ' . esc_html__( 'Instagram also linked.', 'post-forwarder' )
+                                    : ' ' . esc_html__( 'No Instagram Business account on this Page.', 'post-forwarder' );
+                                $meta_auth_notice = '<div class="notice notice-success is-dismissible"><p>'
+                                    . esc_html( sprintf( __( 'Connected to Facebook Page "%s".', 'post-forwarder' ), $meta_page['name'] ) )
+                                    . $ig_suffix . '</p></div>';
+                            }
                         } else {
-                            $meta_cb_maps[ $meta_portal_key ]['pending_pages'] = $meta_pages;
+                            $meta_cb_maps[ $meta_portal_key ]['pending_pages'] = $eligible_pages;
                             $meta_cb_opts['mappings'] = wp_json_encode( $meta_cb_maps );
                             update_option( 'post_forwarding_options', $meta_cb_opts );
                             $meta_auth_notice = 'page_select:' . $meta_portal_key;
