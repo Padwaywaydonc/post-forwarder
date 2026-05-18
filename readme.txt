@@ -75,19 +75,11 @@ Read this section before configuring each portal type to avoid unexpected errors
 2. Activate the plugin.
 3. Go to **Settings → Post Forwarding** to configure portals.
 
-= Relay Server (required for LinkedIn, X, and Meta) =
+= Relay Server =
 
-The relay is a Cloudflare Worker that holds your OAuth app credentials. You deploy your own instance.
+The plugin uses a shared relay server out of the box. No setup is needed for LinkedIn, X, or Meta — just click "Save & Connect" in the portal settings.
 
-1. Clone or download the relay from the repository.
-2. Install dependencies: `npm install`
-3. Create a KV namespace: `wrangler kv:namespace create TOKENS` and paste the returned ID into `wrangler.toml`.
-4. Set your OAuth app secrets:
-   * LinkedIn: `wrangler secret put LINKEDIN_CLIENT_ID` and `wrangler secret put LINKEDIN_CLIENT_SECRET`
-   * X: `wrangler secret put X_CLIENT_ID` and `wrangler secret put X_CLIENT_SECRET`
-   * Meta: `wrangler secret put META_APP_ID` and `wrangler secret put META_APP_SECRET`
-5. Deploy: `wrangler deploy`
-6. In the plugin, go to **Settings → Post Forwarding** and set the Relay URL to your deployed worker URL.
+**Self-hosting (advanced):** If you want to run your own relay, deploy the open-source Cloudflare Worker from the plugin repository. Add `define( 'POST_FORWARDER_RELAY_URL', 'https://your-worker.workers.dev' );` to your `wp-config.php` to point the plugin to your instance.
 
 = WordPress portal credentials (manual) =
 
