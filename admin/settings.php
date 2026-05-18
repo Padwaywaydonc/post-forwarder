@@ -800,8 +800,11 @@ function post_forwarder_settings_page() {
                 <?php else: ?>
                     <?php $i = 0; foreach ($mappings as $key => $mapping): ?>
                         <?php
-                        $mapping_type = isset($mapping['type']) ? $mapping['type'] : 'wordpress';
-                        $is_meta      = ( 'meta' === $mapping_type );
+                        $mapping_type  = isset($mapping['type']) ? $mapping['type'] : 'wordpress';
+                        $is_meta       = ( 'meta' === $mapping_type );
+                        $is_facebook   = ( 'facebook' === $mapping_type );
+                        $is_instagram  = ( 'instagram' === $mapping_type );
+                        $is_meta_family = $is_meta || $is_facebook || $is_instagram;
                         $is_linkedin  = ($mapping_type === 'linkedin');
                         $is_connected   = $is_linkedin
                             && ! empty( $mapping['access_token'] )
