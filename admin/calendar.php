@@ -362,9 +362,17 @@ function post_forwarder_calendar_page() {
                             <span class="pf-avatar" style="background:#000;">X</span>
                             X (Twitter)
                         </button>
-                        <button type="button" class="pf-type-btn" data-type="meta">
+                        <button type="button" class="pf-type-btn" data-type="facebook">
                             <span class="pf-avatar" style="background:#1877f2;">f</span>
-                            Meta
+                            Facebook
+                        </button>
+                        <button type="button" class="pf-type-btn" data-type="instagram">
+                            <span class="pf-avatar" style="background:#c13584;">IG</span>
+                            Instagram
+                        </button>
+                        <button type="button" class="pf-type-btn" data-type="meta">
+                            <span class="pf-avatar" style="background:#1877f2;">f+</span>
+                            Meta (FB+IG)
                         </button>
                     </div>
                 </div>
