@@ -1327,6 +1327,13 @@ function post_forwarder_settings_page() {
                 '<tr class="fields-meta" style="display:none;"><th><?php echo esc_js( __( 'Connection', 'post-forwarder' ) ); ?></th><td>' +
                 '<button type="button" class="button save-and-connect-meta" style="background:#1877f2;border-color:#1877f2;color:#fff;">&#10132; <?php echo esc_js( __( 'Save & Connect with Meta', 'post-forwarder' ) ); ?></button>' +
                 '</td></tr>' +
+                '<tr class="fields-facebook" style="display:none;"><th><?php echo esc_js( __( 'Connection', 'post-forwarder' ) ); ?></th><td>' +
+                '<button type="button" class="button save-and-connect-meta" style="background:#1877f2;border-color:#1877f2;color:#fff;">&#10132; <?php echo esc_js( __( 'Save & Connect with Facebook', 'post-forwarder' ) ); ?></button>' +
+                '</td></tr>' +
+                '<tr class="fields-instagram" style="display:none;"><th><?php echo esc_js( __( 'Connection', 'post-forwarder' ) ); ?></th><td>' +
+                '<button type="button" class="button save-and-connect-meta" style="background:#c13584;border-color:#c13584;color:#fff;">&#10132; <?php echo esc_js( __( 'Save & Connect with Instagram', 'post-forwarder' ) ); ?></button>' +
+                '<p class="description" style="margin-top:6px;"><?php echo esc_js( __( 'Requires a Professional Instagram account linked to a Facebook Page.', 'post-forwarder' ) ); ?></p>' +
+                '</td></tr>' +
                 '</table>' +
                 '<button type="button" class="button test-connection" style="margin-right: 8px;"><?php echo esc_js( __( 'Test Connection', 'post-forwarder' ) ); ?></button>' +
                 '<span class="connection-result" style="font-weight: 600;"></span>' +
