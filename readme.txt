@@ -44,7 +44,7 @@ Read this section before configuring each portal type to avoid unexpected errors
 
 = X (Twitter) =
 
-* A relay server must be configured.
+* The plugin uses the built-in shared relay server — no additional configuration required.
 * **A paid X API subscription is required.** The free tier does not allow writing posts. The Basic plan ($100/month at time of writing) is the minimum tier that grants write access.
 * X access tokens obtained via OAuth 2.0 with `offline.access` scope are **long-lived** (they do not expire after 2 hours). The relay automatically refreshes them in the background when they near expiry.
 * If you see a "no credits" or billing error when forwarding, your X developer account needs an active paid plan — this is an X platform requirement that the plugin cannot work around.
