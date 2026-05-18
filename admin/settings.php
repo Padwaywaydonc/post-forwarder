@@ -865,7 +865,7 @@ function post_forwarder_settings_page() {
                             && ! $wp_button_connected;
 
                         // Determine overall connected state and build summary info for the compact header.
-                        $is_portal_connected = $is_connected || $is_x_connected || $wp_button_connected || $wp_manual_has_data || $is_meta_connected;
+                        $is_portal_connected = $is_connected || $is_x_connected || $wp_button_connected || $wp_manual_has_data || $is_meta_connected || $is_facebook_connected || $is_instagram_connected;
 
                         if ( $is_linkedin ) {
                             $summary_badge = '<span style="background:#0a66c2;color:#fff;font-size:11px;padding:2px 8px;border-radius:3px;flex-shrink:0;">LI</span>';
