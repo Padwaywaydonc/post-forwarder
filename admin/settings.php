@@ -1000,6 +1000,8 @@ function post_forwarder_settings_page() {
                                             <option value="linkedin"  <?php selected($mapping_type, 'linkedin');   ?>><?php esc_html_e('LinkedIn Account',  'post-forwarder'); ?></option>
                                             <option value="x"         <?php selected($mapping_type, 'x');         ?>><?php esc_html_e('X (Twitter) Account', 'post-forwarder'); ?></option>
                                             <option value="meta"      <?php selected($mapping_type, 'meta');      ?>><?php esc_html_e('Meta (Facebook + Instagram)', 'post-forwarder'); ?></option>
+                                            <option value="facebook"  <?php selected($mapping_type, 'facebook');  ?>><?php esc_html_e('Facebook Page', 'post-forwarder'); ?></option>
+                                            <option value="instagram" <?php selected($mapping_type, 'instagram'); ?>><?php esc_html_e('Instagram', 'post-forwarder'); ?></option>
                                         </select>
                                     </td>
                                 </tr>
