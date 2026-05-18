@@ -660,7 +660,7 @@ function post_forwarder_ajax_add_channel() {
             'wp_nonce'   => wp_create_nonce( 'x_oauth_' . $key ),
             'wp_site'    => admin_url(),
         ) );
-    } elseif ( 'meta' === $type && $relay ) {
+    } elseif ( in_array( $type, array( 'meta', 'facebook', 'instagram' ), true ) && $relay ) {
         $oauth_url = $relay . '/meta/start?' . http_build_query( array(
             'return_url' => $settings_url,
             'portal_key' => $key,
