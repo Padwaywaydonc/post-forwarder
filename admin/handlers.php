@@ -627,14 +627,14 @@ function post_forwarder_ajax_add_channel() {
             'wp_site'    => admin_url(),
         ) );
     } elseif ( 'x' === $type && $relay ) {
-        $oauth_url = $relay . '/start-x?' . http_build_query( array(
+        $oauth_url = $relay . '/x/start?' . http_build_query( array(
             'return_url' => $settings_url,
             'portal_key' => $key,
             'wp_nonce'   => wp_create_nonce( 'x_oauth_' . $key ),
             'wp_site'    => admin_url(),
         ) );
     } elseif ( 'meta' === $type && $relay ) {
-        $oauth_url = $relay . '/start-meta?' . http_build_query( array(
+        $oauth_url = $relay . '/meta/start?' . http_build_query( array(
             'return_url' => $settings_url,
             'portal_key' => $key,
             'wp_nonce'   => wp_create_nonce( 'meta_oauth_' . $key ),
