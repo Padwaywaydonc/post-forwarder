@@ -17,9 +17,6 @@ function post_forwarder_calendar_page() {
     $platform_colors = array(
         'linkedin'  => array( 'bg' => '#0a66c2', 'label' => 'in' ),
         'x'         => array( 'bg' => '#000000', 'label' => 'X' ),
-        'meta'      => array( 'bg' => '#1877f2', 'label' => 'f' ),
-        'facebook'  => array( 'bg' => '#1877f2', 'label' => 'FB' ),
-        'instagram' => array( 'bg' => '#c13584', 'label' => 'IG' ),
         'wordpress' => array( 'bg' => '#3858e9', 'label' => 'W' ),
     );
 
@@ -363,18 +360,6 @@ function post_forwarder_calendar_page() {
                         <button type="button" class="pf-type-btn" data-type="x">
                             <span class="pf-avatar" style="background:#000;">X</span>
                             X (Twitter)
-                        </button>
-                        <button type="button" class="pf-type-btn" data-type="facebook">
-                            <span class="pf-avatar" style="background:#1877f2;">f</span>
-                            Facebook
-                        </button>
-                        <button type="button" class="pf-type-btn" data-type="instagram">
-                            <span class="pf-avatar" style="background:#c13584;">IG</span>
-                            Instagram
-                        </button>
-                        <button type="button" class="pf-type-btn" data-type="meta">
-                            <span class="pf-avatar" style="background:#1877f2;">f+</span>
-                            Meta (FB+IG)
                         </button>
                     </div>
                 </div>

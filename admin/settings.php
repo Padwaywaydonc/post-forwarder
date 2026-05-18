@@ -293,143 +293,6 @@ function post_forwarder_settings_page() {
             . '</p></div>';
     }
 
-    // Meta (Facebook + Instagram) relay callback.
-    $meta_auth_notice = '';
-
-    if ( isset( $_GET['meta_relay_callback'] ) ) {
-        $meta_relay_error = isset( $_GET['relay_error'] ) ? sanitize_text_field( wp_unslash( $_GET['relay_error'] ) ) : '';
-        if ( $meta_relay_error ) {
-            $meta_auth_notice = '<div class="notice notice-error is-dismissible"><p>'
-                . esc_html( sprintf( __( 'Meta connection failed: %s', 'post-forwarder' ), $meta_relay_error ) )
-                . '</p></div>';
-        } else {
-            $meta_relay_token_key = isset( $_GET['relay_token_key'] ) ? sanitize_text_field( wp_unslash( $_GET['relay_token_key'] ) ) : '';
-            $meta_relay_url       = post_forwarder_relay_url();
-
-            if ( ! $meta_relay_token_key || ! $meta_relay_url ) {
-                $meta_auth_notice = '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'Meta connection failed: missing token key.', 'post-forwarder' ) . '</p></div>';
-            } else {
-                $meta_token_resp = wp_remote_post( $meta_relay_url . '/token', array(
-                    'headers' => array( 'Content-Type' => 'application/json' ),
-                    'body'    => wp_json_encode( array( 'key' => $meta_relay_token_key ) ),
-                    'timeout' => 15,
-                ) );
-
-                if ( is_wp_error( $meta_token_resp ) ) {
-                    $meta_auth_notice = '<div class="notice notice-error is-dismissible"><p>' . sprintf( esc_html__( 'Meta connection failed: relay request error — %s', 'post-forwarder' ), esc_html( $meta_token_resp->get_error_message() ) ) . '</p></div>';
-                } elseif ( 200 !== wp_remote_retrieve_response_code( $meta_token_resp ) ) {
-                    $http_code = wp_remote_retrieve_response_code( $meta_token_resp );
-                    $body      = wp_remote_retrieve_body( $meta_token_resp );
-                    $meta_auth_notice = '<div class="notice notice-error is-dismissible"><p>' . sprintf( esc_html__( 'Meta connection failed: relay returned HTTP %d — %s', 'post-forwarder' ), $http_code, esc_html( $body ) ) . '</p></div>';
-                } else {
-                    $meta_payload    = json_decode( wp_remote_retrieve_body( $meta_token_resp ), true );
-                    $meta_portal_key = isset( $meta_payload['portal_key'] ) ? sanitize_key( $meta_payload['portal_key'] ) : '';
-                    $meta_wp_nonce   = isset( $meta_payload['wp_nonce'] )   ? $meta_payload['wp_nonce']   : '';
-                    $meta_pages      = isset( $meta_payload['pages'] )      ? $meta_payload['pages']      : array();
-
-                    if ( ! $meta_portal_key || ! wp_verify_nonce( $meta_wp_nonce, 'meta_oauth_' . $meta_portal_key ) ) {
-                        $meta_auth_notice = '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'Meta connection failed: security check failed.', 'post-forwarder' ) . '</p></div>';
-                    } elseif ( empty( $meta_pages ) ) {
-                        $meta_auth_notice = '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'Meta connection failed: no pages in payload.', 'post-forwarder' ) . '</p></div>';
-                    } else {
-                        $meta_cb_opts = get_option( 'post_forwarding_options', array() );
-                        if ( is_string( $meta_cb_opts ) ) { $meta_cb_opts = json_decode( $meta_cb_opts, true ); }
-                        if ( ! is_array( $meta_cb_opts ) ) { $meta_cb_opts = array(); }
-                        $meta_cb_maps = isset( $meta_cb_opts['mappings'] ) ? $meta_cb_opts['mappings'] : array();
-                        if ( ! is_array( $meta_cb_maps ) ) {
-                            $meta_cb_maps = json_decode( is_string( $meta_cb_maps ) ? $meta_cb_maps : '{}', true );
-                            if ( ! is_array( $meta_cb_maps ) ) { $meta_cb_maps = array(); }
-                        }
-
-                        $meta_portal_type = isset( $meta_cb_maps[ $meta_portal_key ]['type'] ) ? $meta_cb_maps[ $meta_portal_key ]['type'] : 'meta';
-
-                        // For Instagram portals only show pages that have an Instagram Business account linked.
-                        $eligible_pages = ( 'instagram' === $meta_portal_type )
-                            ? array_values( array_filter( $meta_pages, static function ( $p ) {
-                                return ! empty( $p['instagram_business_account']['id'] );
-                            } ) )
-                            : $meta_pages;
-
-                        if ( 'instagram' === $meta_portal_type && empty( $eligible_pages ) ) {
-                            $meta_auth_notice = '<div class="notice notice-error is-dismissible"><p>'
-                                . esc_html__( 'Instagram connection failed: none of your Facebook Pages have an Instagram Business or Creator account linked. Link one in Facebook Page Settings → Instagram, then try again.', 'post-forwarder' )
-                                . '</p></div>';
-                        } elseif ( count( $eligible_pages ) === 1 ) {
-                            $meta_page = $eligible_pages[0];
-                            $meta_cb_maps[ $meta_portal_key ]['access_token']         = $meta_page['access_token'];
-                            $meta_cb_maps[ $meta_portal_key ]['page_id']              = $meta_page['id'];
-                            $meta_cb_maps[ $meta_portal_key ]['page_name']            = $meta_page['name'];
-                            $meta_cb_maps[ $meta_portal_key ]['instagram_account_id'] = ! empty( $meta_page['instagram_business_account']['id'] ) ? $meta_page['instagram_business_account']['id'] : '';
-                            $meta_cb_maps[ $meta_portal_key ]['meta_auth_mode']       = 'button';
-                            unset( $meta_cb_maps[ $meta_portal_key ]['pending_pages'] );
-                            $meta_cb_opts['mappings'] = wp_json_encode( $meta_cb_maps );
-                            update_option( 'post_forwarding_options', $meta_cb_opts );
-
-                            if ( 'instagram' === $meta_portal_type ) {
-                                $meta_auth_notice = '<div class="notice notice-success is-dismissible"><p>'
-                                    . esc_html( sprintf( __( 'Instagram connected via Facebook Page "%s".', 'post-forwarder' ), $meta_page['name'] ) )
-                                    . '</p></div>';
-                            } elseif ( 'facebook' === $meta_portal_type ) {
-                                $ig_suffix = ! empty( $meta_cb_maps[ $meta_portal_key ]['instagram_account_id'] )
-                                    ? ' ' . esc_html__( '(Instagram also available — add a separate Instagram portal to use it.)', 'post-forwarder' )
-                                    : '';
-                                $meta_auth_notice = '<div class="notice notice-success is-dismissible"><p>'
-                                    . esc_html( sprintf( __( 'Connected to Facebook Page "%s".', 'post-forwarder' ), $meta_page['name'] ) )
-                                    . $ig_suffix . '</p></div>';
-                            } else {
-                                $ig_suffix = ! empty( $meta_cb_maps[ $meta_portal_key ]['instagram_account_id'] )
-                                    ? ' ' . esc_html__( 'Instagram also linked.', 'post-forwarder' )
-                                    : ' ' . esc_html__( 'No Instagram Business account on this Page.', 'post-forwarder' );
-                                $meta_auth_notice = '<div class="notice notice-success is-dismissible"><p>'
-                                    . esc_html( sprintf( __( 'Connected to Facebook Page "%s".', 'post-forwarder' ), $meta_page['name'] ) )
-                                    . $ig_suffix . '</p></div>';
-                            }
-                        } else {
-                            $meta_cb_maps[ $meta_portal_key ]['pending_pages'] = $eligible_pages;
-                            $meta_cb_opts['mappings'] = wp_json_encode( $meta_cb_maps );
-                            update_option( 'post_forwarding_options', $meta_cb_opts );
-                            $meta_auth_notice = 'page_select:' . $meta_portal_key;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Meta page selection form submission.
-    if ( isset( $_POST['meta_select_page'], $_POST['meta_select_portal_key'] ) && check_admin_referer( 'meta_page_select' ) ) {
-        $sel_key     = sanitize_key( wp_unslash( $_POST['meta_select_portal_key'] ) );
-        $sel_page_id = sanitize_text_field( wp_unslash( $_POST['meta_select_page'] ) );
-        $sel_opts    = get_option( 'post_forwarding_options', array() );
-        if ( is_string( $sel_opts ) ) { $sel_opts = json_decode( $sel_opts, true ); }
-        if ( ! is_array( $sel_opts ) ) { $sel_opts = array(); }
-        $sel_maps = isset( $sel_opts['mappings'] ) ? $sel_opts['mappings'] : array();
-        if ( ! is_array( $sel_maps ) ) { $sel_maps = json_decode( is_string( $sel_maps ) ? $sel_maps : '{}', true ); }
-        if ( ! is_array( $sel_maps ) ) { $sel_maps = array(); }
-
-        if ( isset( $sel_maps[ $sel_key ]['pending_pages'] ) && is_array( $sel_maps[ $sel_key ]['pending_pages'] ) ) {
-            foreach ( $sel_maps[ $sel_key ]['pending_pages'] as $pg ) {
-                if ( (string) $pg['id'] === $sel_page_id ) {
-                    $sel_maps[ $sel_key ]['access_token']         = $pg['access_token'];
-                    $sel_maps[ $sel_key ]['page_id']              = $pg['id'];
-                    $sel_maps[ $sel_key ]['page_name']            = $pg['name'];
-                    $sel_maps[ $sel_key ]['instagram_account_id'] = ! empty( $pg['instagram_business_account']['id'] ) ? $pg['instagram_business_account']['id'] : '';
-                    $sel_maps[ $sel_key ]['meta_auth_mode']       = 'button';
-                    unset( $sel_maps[ $sel_key ]['pending_pages'] );
-                    $sel_opts['mappings'] = wp_json_encode( $sel_maps );
-                    update_option( 'post_forwarding_options', $sel_opts );
-                    $ig_suffix = ! empty( $sel_maps[ $sel_key ]['instagram_account_id'] )
-                        ? ' ' . esc_html__( 'Instagram also linked.', 'post-forwarder' )
-                        : '';
-                    $meta_auth_notice = '<div class="notice notice-success is-dismissible"><p>'
-                        . esc_html( sprintf( __( 'Connected to Facebook Page "%s".', 'post-forwarder' ), $pg['name'] ) )
-                        . $ig_suffix . '</p></div>';
-                    break;
-                }
-            }
-        }
-    }
-
     // Handle LinkedIn direct OAuth callback (non-relay mode).
     if ( '' === $linkedin_oauth_notice && isset( $_GET['linkedin_oauth_callback'] ) ) {
         if ( isset( $_GET['error'] ) || isset( $_GET['error_description'] ) ) {
@@ -622,35 +485,6 @@ function post_forwarder_settings_page() {
         <?php echo wp_kses_post($linkedin_oauth_notice); ?>
         <?php echo wp_kses_post($x_oauth_notice); ?>
         <?php echo wp_kses_post( $wp_auth_notice ); ?>
-        <?php
-        if ( strpos( $meta_auth_notice, 'page_select:' ) === 0 ) :
-            $meta_picker_key  = substr( $meta_auth_notice, strlen( 'page_select:' ) );
-            $meta_picker_opts = get_option( 'post_forwarding_options', array() );
-            if ( is_string( $meta_picker_opts ) ) { $meta_picker_opts = json_decode( $meta_picker_opts, true ); }
-            $meta_picker_maps = isset( $meta_picker_opts['mappings'] ) ? $meta_picker_opts['mappings'] : array();
-            if ( ! is_array( $meta_picker_maps ) ) { $meta_picker_maps = json_decode( is_string( $meta_picker_maps ) ? $meta_picker_maps : '{}', true ); }
-            $meta_picker_pages = isset( $meta_picker_maps[ $meta_picker_key ]['pending_pages'] ) ? $meta_picker_maps[ $meta_picker_key ]['pending_pages'] : array();
-        ?>
-        <div class="notice notice-info" style="padding:16px;">
-            <p><strong><?php esc_html_e( 'Select a Facebook Page to connect:', 'post-forwarder' ); ?></strong></p>
-            <form method="post">
-                <?php wp_nonce_field( 'meta_page_select' ); ?>
-                <input type="hidden" name="meta_select_portal_key" value="<?php echo esc_attr( $meta_picker_key ); ?>">
-                <?php foreach ( $meta_picker_pages as $pg ) : ?>
-                <label style="display:block;margin:6px 0;">
-                    <input type="radio" name="meta_select_page" value="<?php echo esc_attr( $pg['id'] ); ?>" required>
-                    <strong><?php echo esc_html( $pg['name'] ); ?></strong>
-                    <?php if ( ! empty( $pg['instagram_business_account']['id'] ) ) : ?>
-                        <span style="color:#666;font-size:12px;margin-left:6px;">+ Instagram</span>
-                    <?php endif; ?>
-                </label>
-                <?php endforeach; ?>
-                <?php submit_button( __( 'Connect Selected Page', 'post-forwarder' ), 'primary', 'submit', false ); ?>
-            </form>
-        </div>
-        <?php else : ?>
-        <?php echo wp_kses_post( $meta_auth_notice ); ?>
-        <?php endif; ?>
         <form method="post" action="options.php">
             <?php settings_fields('post_forwarding'); ?>
             <table class="form-table">
@@ -679,7 +513,6 @@ function post_forwarder_settings_page() {
             <input type="hidden" name="pending_linkedin_connect" value="">
             <input type="hidden" name="pending_x_connect" value="">
             <input type="hidden" name="pending_wp_connect" value="">
-            <input type="hidden" name="pending_meta_connect" value="">
             
             <div id="portals-container">
 
@@ -694,9 +527,6 @@ function post_forwarder_settings_page() {
                                         <option value="wordpress"><?php esc_html_e( 'WordPress Portal', 'post-forwarder' ); ?></option>
                                         <option value="linkedin"><?php esc_html_e( 'LinkedIn Account', 'post-forwarder' ); ?></option>
                                         <option value="x"><?php esc_html_e( 'X (Twitter) Account', 'post-forwarder' ); ?></option>
-                                        <option value="meta"><?php esc_html_e( 'Meta (Facebook + Instagram)', 'post-forwarder' ); ?></option>
-                                        <option value="facebook"><?php esc_html_e( 'Facebook Page', 'post-forwarder' ); ?></option>
-                                        <option value="instagram"><?php esc_html_e( 'Instagram', 'post-forwarder' ); ?></option>
                                     </select>
                                 </td>
                             </tr>
@@ -764,34 +594,6 @@ function post_forwarder_settings_page() {
                                     <?php endif; ?>
                                 </td>
                             </tr>
-                            <tr class="fields-meta" style="display:none;">
-                                <th><?php esc_html_e( 'Post to', 'post-forwarder' ); ?></th>
-                                <td>
-                                    <label><input type="checkbox" name="portals[0][post_to_facebook]" value="1" checked> <?php esc_html_e( 'Facebook Page', 'post-forwarder' ); ?></label>
-                                    &nbsp;&nbsp;
-                                    <label><input type="checkbox" name="portals[0][post_to_instagram]" value="1" checked> <?php esc_html_e( 'Instagram', 'post-forwarder' ); ?></label>
-                                    <p class="description"><?php esc_html_e( 'Instagram requires a Business/Creator account linked to the Page, and a publicly accessible image.', 'post-forwarder' ); ?></p>
-                                </td>
-                            </tr>
-                            <tr class="fields-meta" style="display:none;">
-                                <th><?php esc_html_e( 'Connection', 'post-forwarder' ); ?></th>
-                                <td>
-                                    <button type="button" class="button save-and-connect-meta" style="background:#1877f2;border-color:#1877f2;color:#fff;">&#10132; <?php esc_html_e( 'Save & Connect with Meta', 'post-forwarder' ); ?></button>
-                                </td>
-                            </tr>
-                            <tr class="fields-facebook" style="display:none;">
-                                <th><?php esc_html_e( 'Connection', 'post-forwarder' ); ?></th>
-                                <td>
-                                    <button type="button" class="button save-and-connect-meta" style="background:#1877f2;border-color:#1877f2;color:#fff;">&#10132; <?php esc_html_e( 'Save & Connect with Facebook', 'post-forwarder' ); ?></button>
-                                </td>
-                            </tr>
-                            <tr class="fields-instagram" style="display:none;">
-                                <th><?php esc_html_e( 'Connection', 'post-forwarder' ); ?></th>
-                                <td>
-                                    <button type="button" class="button save-and-connect-meta" style="background:#c13584;border-color:#c13584;color:#fff;">&#10132; <?php esc_html_e( 'Save & Connect with Instagram', 'post-forwarder' ); ?></button>
-                                    <p class="description"><?php esc_html_e( 'Requires a Professional (Business/Creator) Instagram account linked to a Facebook Page you manage.', 'post-forwarder' ); ?></p>
-                                </td>
-                            </tr>
                         </table>
                         <button type="button" class="button test-connection" style="margin-right: 8px;"><?php esc_html_e( 'Test Connection', 'post-forwarder' ); ?></button>
                         <span class="connection-result" style="font-weight: 600;"></span>
@@ -801,10 +603,6 @@ function post_forwarder_settings_page() {
                     <?php $i = 0; foreach ($mappings as $key => $mapping): ?>
                         <?php
                         $mapping_type  = isset($mapping['type']) ? $mapping['type'] : 'wordpress';
-                        $is_meta       = ( 'meta' === $mapping_type );
-                        $is_facebook   = ( 'facebook' === $mapping_type );
-                        $is_instagram  = ( 'instagram' === $mapping_type );
-                        $is_meta_family = $is_meta || $is_facebook || $is_instagram;
                         $is_linkedin  = ($mapping_type === 'linkedin');
                         $is_connected   = $is_linkedin
                             && ! empty( $mapping['access_token'] )
@@ -832,18 +630,6 @@ function post_forwarder_settings_page() {
                             ) );
                         }
 
-                        $is_meta_connected      = $is_meta      && ! empty( $mapping['access_token'] ) && ! empty( $mapping['page_id'] );
-                        $is_facebook_connected  = $is_facebook  && ! empty( $mapping['access_token'] ) && ! empty( $mapping['page_id'] );
-                        $is_instagram_connected = $is_instagram && ! empty( $mapping['access_token'] ) && ! empty( $mapping['instagram_account_id'] );
-                        $meta_relay_val    = post_forwarder_relay_url();
-                        $meta_connect_url  = ( $is_meta_family && $meta_relay_val )
-                            ? $meta_relay_val . '/meta/start?' . http_build_query( array(
-                                'return_url' => admin_url( 'admin.php?page=post-forwarder-settings' ),
-                                'portal_key' => $key,
-                                'wp_nonce'   => wp_create_nonce( 'meta_oauth_' . $key ),
-                            ) )
-                            : '';
-
                         $is_x           = ( 'x' === $mapping_type );
                         $is_x_connected = $is_x
                             && ! empty( $mapping['access_token'] )
@@ -865,7 +651,7 @@ function post_forwarder_settings_page() {
                             && ! $wp_button_connected;
 
                         // Determine overall connected state and build summary info for the compact header.
-                        $is_portal_connected = $is_connected || $is_x_connected || $wp_button_connected || $wp_manual_has_data || $is_meta_connected || $is_facebook_connected || $is_instagram_connected;
+                        $is_portal_connected = $is_connected || $is_x_connected || $wp_button_connected || $wp_manual_has_data;
 
                         if ( $is_linkedin ) {
                             $summary_badge = '<span style="background:#0a66c2;color:#fff;font-size:11px;padding:2px 8px;border-radius:3px;flex-shrink:0;">LI</span>';
@@ -885,50 +671,6 @@ function post_forwarder_settings_page() {
                                 $summary_status = '<span style="color:#999;">' . esc_html__( 'Not connected', 'post-forwarder' ) . '</span>';
                                 $summary_action = $has_credentials
                                     ? '<a href="' . esc_url( $oauth_url ) . '" class="button button-small" style="background:#0a66c2;border-color:#0a66c2;color:#fff;">&#10132; ' . esc_html__( 'Connect', 'post-forwarder' ) . '</a>'
-                                    : '';
-                            }
-                        } elseif ( $is_meta ) {
-                            $summary_badge = '<span style="background:#1877f2;color:#fff;font-size:11px;padding:2px 8px;border-radius:3px;flex-shrink:0;">META</span>';
-                            if ( $is_meta_connected ) {
-                                $summary_status = '<span style="color:#00a32a;font-weight:600;">&#10003; Connected</span>';
-                                $page_name = ! empty( $mapping['page_name'] ) ? ' <span style="color:#666;font-size:12px;">' . esc_html( $mapping['page_name'] ) . '</span>' : '';
-                                $ig_badge  = ! empty( $mapping['instagram_account_id'] ) ? ' <span style="color:#c13584;font-size:11px;">+ IG</span>' : '';
-                                $summary_status .= $page_name . $ig_badge;
-                                $summary_action  = $meta_connect_url
-                                    ? '<a href="' . esc_url( $meta_connect_url ) . '" class="button button-secondary button-small">' . esc_html__( 'Reconnect', 'post-forwarder' ) . '</a>'
-                                    : '';
-                            } else {
-                                $summary_status = '<span style="color:#999;">' . esc_html__( 'Not connected', 'post-forwarder' ) . '</span>';
-                                $summary_action  = $meta_connect_url
-                                    ? '<a href="' . esc_url( $meta_connect_url ) . '" class="button button-small" style="background:#1877f2;border-color:#1877f2;color:#fff;">&#10132; ' . esc_html__( 'Connect', 'post-forwarder' ) . '</a>'
-                                    : '';
-                            }
-                        } elseif ( $is_facebook ) {
-                            $summary_badge = '<span style="background:#1877f2;color:#fff;font-size:11px;padding:2px 8px;border-radius:3px;flex-shrink:0;">FB</span>';
-                            if ( $is_facebook_connected ) {
-                                $summary_status = '<span style="color:#00a32a;font-weight:600;">&#10003; Connected</span>';
-                                $summary_status .= ! empty( $mapping['page_name'] ) ? ' <span style="color:#666;font-size:12px;">' . esc_html( $mapping['page_name'] ) . '</span>' : '';
-                                $summary_action  = $meta_connect_url
-                                    ? '<a href="' . esc_url( $meta_connect_url ) . '" class="button button-secondary button-small">' . esc_html__( 'Reconnect', 'post-forwarder' ) . '</a>'
-                                    : '';
-                            } else {
-                                $summary_status = '<span style="color:#999;">' . esc_html__( 'Not connected', 'post-forwarder' ) . '</span>';
-                                $summary_action  = $meta_connect_url
-                                    ? '<a href="' . esc_url( $meta_connect_url ) . '" class="button button-small" style="background:#1877f2;border-color:#1877f2;color:#fff;">&#10132; ' . esc_html__( 'Connect', 'post-forwarder' ) . '</a>'
-                                    : '';
-                            }
-                        } elseif ( $is_instagram ) {
-                            $summary_badge = '<span style="background:#c13584;color:#fff;font-size:11px;padding:2px 8px;border-radius:3px;flex-shrink:0;">IG</span>';
-                            if ( $is_instagram_connected ) {
-                                $summary_status = '<span style="color:#00a32a;font-weight:600;">&#10003; Connected</span>';
-                                $summary_status .= ! empty( $mapping['page_name'] ) ? ' <span style="color:#666;font-size:12px;">' . esc_html__( 'via', 'post-forwarder' ) . ' ' . esc_html( $mapping['page_name'] ) . '</span>' : '';
-                                $summary_action  = $meta_connect_url
-                                    ? '<a href="' . esc_url( $meta_connect_url ) . '" class="button button-secondary button-small">' . esc_html__( 'Reconnect', 'post-forwarder' ) . '</a>'
-                                    : '';
-                            } else {
-                                $summary_status = '<span style="color:#999;">' . esc_html__( 'Not connected', 'post-forwarder' ) . '</span>';
-                                $summary_action  = $meta_connect_url
-                                    ? '<a href="' . esc_url( $meta_connect_url ) . '" class="button button-small" style="background:#c13584;border-color:#c13584;color:#fff;">&#10132; ' . esc_html__( 'Connect', 'post-forwarder' ) . '</a>'
                                     : '';
                             }
                         } elseif ( $is_x ) {
@@ -999,9 +741,6 @@ function post_forwarder_settings_page() {
                                             <option value="wordpress" <?php selected($mapping_type, 'wordpress'); ?>><?php esc_html_e('WordPress Portal', 'post-forwarder'); ?></option>
                                             <option value="linkedin"  <?php selected($mapping_type, 'linkedin');   ?>><?php esc_html_e('LinkedIn Account',  'post-forwarder'); ?></option>
                                             <option value="x"         <?php selected($mapping_type, 'x');         ?>><?php esc_html_e('X (Twitter) Account', 'post-forwarder'); ?></option>
-                                            <option value="meta"      <?php selected($mapping_type, 'meta');      ?>><?php esc_html_e('Meta (Facebook + Instagram)', 'post-forwarder'); ?></option>
-                                            <option value="facebook"  <?php selected($mapping_type, 'facebook');  ?>><?php esc_html_e('Facebook Page', 'post-forwarder'); ?></option>
-                                            <option value="instagram" <?php selected($mapping_type, 'instagram'); ?>><?php esc_html_e('Instagram', 'post-forwarder'); ?></option>
                                         </select>
                                     </td>
                                 </tr>
@@ -1010,13 +749,13 @@ function post_forwarder_settings_page() {
                                     <th><?php esc_html_e('Account Name', 'post-forwarder'); ?></th>
                                     <td><input type="text" name="portals[<?php echo esc_attr($i); ?>][name]" value="<?php echo esc_attr($mapping['name']); ?>" style="width: 300px;" /></td>
                                 </tr>
-                                <tr class="fields-wordpress" <?php echo ( $is_linkedin || $is_x || $is_meta_family ) ? 'style="display:none;"' : ''; ?>>
+                                <tr class="fields-wordpress" <?php echo ( $is_linkedin || $is_x ) ? 'style="display:none;"' : ''; ?>>
                                     <th><?php esc_html_e( 'URL', 'post-forwarder' ); ?></th>
                                     <td><input type="url" name="portals[<?php echo esc_attr($i); ?>][url]"
                                          value="<?php echo esc_attr( isset( $mapping['url'] ) ? $mapping['url'] : '' ); ?>"
                                          style="width: 400px;" /></td>
                                 </tr>
-                                <tr class="fields-wordpress" <?php echo ( $is_linkedin || $is_x || $is_meta_family ) ? 'style="display:none;"' : ''; ?>>
+                                <tr class="fields-wordpress" <?php echo ( $is_linkedin || $is_x ) ? 'style="display:none;"' : ''; ?>>
                                     <th><?php esc_html_e( 'Connection', 'post-forwarder' ); ?></th>
                                     <td>
                                         <?php if ( $wp_button_connected ) : ?>
@@ -1043,7 +782,7 @@ function post_forwarder_settings_page() {
                                         <?php endif; ?>
                                     </td>
                                 </tr>
-                                <?php $show_manual = ( ! $is_linkedin && ! $is_x && ! $is_meta && $wp_manual_has_data ) ? '' : 'style="display:none;"'; ?>
+                                <?php $show_manual = ( ! $is_linkedin && ! $is_x && $wp_manual_has_data ) ? '' : 'style="display:none;"'; ?>
                                 <tr class="fields-wordpress wp-manual-fields" <?php echo $show_manual; ?>>
                                     <th><?php esc_html_e( 'Username / User ID', 'post-forwarder' ); ?></th>
                                     <td><input type="text" name="portals[<?php echo esc_attr($i); ?>][user]"
@@ -1152,82 +891,8 @@ function post_forwarder_settings_page() {
                                         <?php endif; ?>
                                     </td>
                                 </tr>
-                                <tr class="fields-meta" <?php echo $is_meta ? '' : 'style="display:none;"'; ?>>
-                                    <th><?php esc_html_e( 'Post to', 'post-forwarder' ); ?></th>
-                                    <td>
-                                        <label><input type="checkbox" name="portals[<?php echo esc_attr($i); ?>][post_to_facebook]" value="1" <?php checked( ! empty( $mapping['post_to_facebook'] ) ); ?>> <?php esc_html_e( 'Facebook Page', 'post-forwarder' ); ?></label>
-                                        &nbsp;&nbsp;
-                                        <label><input type="checkbox" name="portals[<?php echo esc_attr($i); ?>][post_to_instagram]" value="1" <?php checked( ! empty( $mapping['post_to_instagram'] ) ); ?>> <?php esc_html_e( 'Instagram', 'post-forwarder' ); ?></label>
-                                    </td>
-                                </tr>
-                                <tr class="fields-meta" <?php echo $is_meta ? '' : 'style="display:none;"'; ?>>
-                                    <th><?php esc_html_e( 'Connection', 'post-forwarder' ); ?></th>
-                                    <td>
-                                        <?php if ( $is_meta_connected ) : ?>
-                                            <span style="color:#00a32a;font-weight:600;">&#10003; <?php esc_html_e( 'Connected', 'post-forwarder' ); ?></span>
-                                            <span style="color:#666;font-size:12px;margin-left:8px;"><?php echo esc_html( isset( $mapping['page_name'] ) ? $mapping['page_name'] : '' ); ?></span>
-                                            <?php if ( ! empty( $mapping['instagram_account_id'] ) ) : ?>
-                                                <span style="color:#c13584;font-size:12px;margin-left:6px;">+ Instagram</span>
-                                            <?php endif; ?>
-                                            <?php if ( $meta_connect_url ) : ?>
-                                                <a href="<?php echo esc_url( $meta_connect_url ); ?>" class="button button-secondary" style="margin-left:10px;"><?php esc_html_e( 'Reconnect', 'post-forwarder' ); ?></a>
-                                            <?php endif; ?>
-                                        <?php elseif ( $meta_connect_url ) : ?>
-                                            <a href="<?php echo esc_url( $meta_connect_url ); ?>" class="button" style="background:#1877f2;border-color:#1877f2;color:#fff;">&#10132; <?php esc_html_e( 'Connect with Meta', 'post-forwarder' ); ?></a>
-                                        <?php else : ?>
-                                            <span style="color:#666;"><?php esc_html_e( 'Enter App ID and Secret, then save.', 'post-forwarder' ); ?></span>
-                                        <?php endif; ?>
-                                        <?php if ( $is_meta && ! empty( $mapping['last_error'] ) && ! $is_meta_connected ) : ?>
-                                            <p class="description" style="color:#cc0000;margin-top:6px;">
-                                                <strong><?php esc_html_e( 'Last error:', 'post-forwarder' ); ?></strong>
-                                                <?php echo esc_html( $mapping['last_error'] ); ?>
-                                            </p>
-                                        <?php endif; ?>
-                                    </td>
-                                </tr>
-                                <tr class="fields-facebook" <?php echo $is_facebook ? '' : 'style="display:none;"'; ?>>
-                                    <th><?php esc_html_e( 'Connection', 'post-forwarder' ); ?></th>
-                                    <td>
-                                        <?php if ( $is_facebook_connected ) : ?>
-                                            <span style="color:#00a32a;font-weight:600;">&#10003; <?php esc_html_e( 'Connected', 'post-forwarder' ); ?></span>
-                                            <span style="color:#666;font-size:12px;margin-left:8px;"><?php echo esc_html( isset( $mapping['page_name'] ) ? $mapping['page_name'] : '' ); ?></span>
-                                            <?php if ( $meta_connect_url ) : ?>
-                                                <a href="<?php echo esc_url( $meta_connect_url ); ?>" class="button button-secondary" style="margin-left:10px;"><?php esc_html_e( 'Reconnect', 'post-forwarder' ); ?></a>
-                                            <?php endif; ?>
-                                        <?php elseif ( $meta_connect_url ) : ?>
-                                            <a href="<?php echo esc_url( $meta_connect_url ); ?>" class="button" style="background:#1877f2;border-color:#1877f2;color:#fff;">&#10132; <?php esc_html_e( 'Connect with Facebook', 'post-forwarder' ); ?></a>
-                                        <?php endif; ?>
-                                        <?php if ( $is_facebook && ! empty( $mapping['last_error'] ) && ! $is_facebook_connected ) : ?>
-                                            <p class="description" style="color:#cc0000;margin-top:6px;">
-                                                <strong><?php esc_html_e( 'Last error:', 'post-forwarder' ); ?></strong>
-                                                <?php echo esc_html( $mapping['last_error'] ); ?>
-                                            </p>
-                                        <?php endif; ?>
-                                    </td>
-                                </tr>
-                                <tr class="fields-instagram" <?php echo $is_instagram ? '' : 'style="display:none;"'; ?>>
-                                    <th><?php esc_html_e( 'Connection', 'post-forwarder' ); ?></th>
-                                    <td>
-                                        <?php if ( $is_instagram_connected ) : ?>
-                                            <span style="color:#00a32a;font-weight:600;">&#10003; <?php esc_html_e( 'Connected', 'post-forwarder' ); ?></span>
-                                            <span style="color:#666;font-size:12px;margin-left:8px;"><?php echo esc_html( isset( $mapping['page_name'] ) ? $mapping['page_name'] : '' ); ?></span>
-                                            <?php if ( $meta_connect_url ) : ?>
-                                                <a href="<?php echo esc_url( $meta_connect_url ); ?>" class="button button-secondary" style="margin-left:10px;"><?php esc_html_e( 'Reconnect', 'post-forwarder' ); ?></a>
-                                            <?php endif; ?>
-                                        <?php elseif ( $meta_connect_url ) : ?>
-                                            <a href="<?php echo esc_url( $meta_connect_url ); ?>" class="button" style="background:#c13584;border-color:#c13584;color:#fff;">&#10132; <?php esc_html_e( 'Connect with Instagram', 'post-forwarder' ); ?></a>
-                                        <?php endif; ?>
-                                        <p class="description" style="margin-top:6px;"><?php esc_html_e( 'Requires a Professional (Business/Creator) Instagram account linked to a Facebook Page you manage.', 'post-forwarder' ); ?></p>
-                                        <?php if ( $is_instagram && ! empty( $mapping['last_error'] ) && ! $is_instagram_connected ) : ?>
-                                            <p class="description" style="color:#cc0000;margin-top:6px;">
-                                                <strong><?php esc_html_e( 'Last error:', 'post-forwarder' ); ?></strong>
-                                                <?php echo esc_html( $mapping['last_error'] ); ?>
-                                            </p>
-                                        <?php endif; ?>
-                                    </td>
-                                </tr>
                             </table>
-                            <button type="button" class="button test-connection" style="margin-right: 8px;<?php echo ( $is_linkedin || $is_x || $is_meta_family ) ? ' display:none;' : ''; ?>"><?php esc_html_e('Test Connection', 'post-forwarder'); ?></button>
+                            <button type="button" class="button test-connection" style="margin-right: 8px;<?php echo ( $is_linkedin || $is_x ) ? ' display:none;' : ''; ?>"><?php esc_html_e('Test Connection', 'post-forwarder'); ?></button>
                             <span class="connection-result" style="font-weight: 600;"></span>
                             <button type="button" class="button remove-portal" style="float: right;"><?php esc_html_e('Remove Account', 'post-forwarder'); ?></button>
                         </div><!-- end portal-detail -->
@@ -1272,9 +937,6 @@ function post_forwarder_settings_page() {
             $row.find('.fields-wordpress').toggle(type === 'wordpress');
             $row.find('.fields-linkedin').toggle(type === 'linkedin');
             $row.find('.fields-x').toggle(type === 'x');
-            $row.find('.fields-meta').toggle(type === 'meta');
-            $row.find('.fields-facebook').toggle(type === 'facebook');
-            $row.find('.fields-instagram').toggle(type === 'instagram');
             $row.find('.test-connection').toggle(type === 'wordpress');
         }
 
@@ -1297,9 +959,6 @@ function post_forwarder_settings_page() {
                 '<option value="wordpress"><?php echo esc_js( __( 'WordPress Portal', 'post-forwarder' ) ); ?></option>' +
                 '<option value="linkedin"><?php echo esc_js( __( 'LinkedIn Account', 'post-forwarder' ) ); ?></option>' +
                 '<option value="x"><?php echo esc_js( __( 'X (Twitter) Account', 'post-forwarder' ) ); ?></option>' +
-                '<option value="meta"><?php echo esc_js( __( 'Meta (Facebook + Instagram)', 'post-forwarder' ) ); ?></option>' +
-                '<option value="facebook"><?php echo esc_js( __( 'Facebook Page', 'post-forwarder' ) ); ?></option>' +
-                '<option value="instagram"><?php echo esc_js( __( 'Instagram', 'post-forwarder' ) ); ?></option>' +
                 '</select></td></tr>' +
                 '<tr><th><?php echo esc_js( __( 'Account Name', 'post-forwarder' ) ); ?></th><td><input type="text" name="portals[' + n + '][name]" placeholder="<?php echo esc_js( __( 'e.g., My Account', 'post-forwarder' ) ); ?>" style="width: 300px;" /></td></tr>' +
                 '<tr class="fields-wordpress"><th><?php echo esc_js( __( 'URL', 'post-forwarder' ) ); ?></th><td><input type="url" name="portals[' + n + '][url]" placeholder="https://example.com" style="width: 400px;" /></td></tr>' +
@@ -1320,20 +979,6 @@ function post_forwarder_settings_page() {
                     ? '<button type="button" class="button save-and-connect-x" style="background:#000;border-color:#000;color:#fff;">&#10132; <?php echo esc_js( __( 'Save & Connect with X', 'post-forwarder' ) ); ?></button>'
                     : '<span style="color:#666;"><?php echo esc_js( __( 'X connection requires the relay. Configure POST_FORWARDER_RELAY_URL first.', 'post-forwarder' ) ); ?></span>'
                 ) + '</td></tr>' +
-                '<tr class="fields-meta" style="display:none;"><th><?php echo esc_js( __( 'Post to', 'post-forwarder' ) ); ?></th><td>' +
-                '<label><input type="checkbox" name="portals[' + n + '][post_to_facebook]" value="1" checked> <?php echo esc_js( __( 'Facebook Page', 'post-forwarder' ) ); ?></label>&nbsp;&nbsp;' +
-                '<label><input type="checkbox" name="portals[' + n + '][post_to_instagram]" value="1" checked> <?php echo esc_js( __( 'Instagram', 'post-forwarder' ) ); ?></label>' +
-                '</td></tr>' +
-                '<tr class="fields-meta" style="display:none;"><th><?php echo esc_js( __( 'Connection', 'post-forwarder' ) ); ?></th><td>' +
-                '<button type="button" class="button save-and-connect-meta" style="background:#1877f2;border-color:#1877f2;color:#fff;">&#10132; <?php echo esc_js( __( 'Save & Connect with Meta', 'post-forwarder' ) ); ?></button>' +
-                '</td></tr>' +
-                '<tr class="fields-facebook" style="display:none;"><th><?php echo esc_js( __( 'Connection', 'post-forwarder' ) ); ?></th><td>' +
-                '<button type="button" class="button save-and-connect-meta" style="background:#1877f2;border-color:#1877f2;color:#fff;">&#10132; <?php echo esc_js( __( 'Save & Connect with Facebook', 'post-forwarder' ) ); ?></button>' +
-                '</td></tr>' +
-                '<tr class="fields-instagram" style="display:none;"><th><?php echo esc_js( __( 'Connection', 'post-forwarder' ) ); ?></th><td>' +
-                '<button type="button" class="button save-and-connect-meta" style="background:#c13584;border-color:#c13584;color:#fff;">&#10132; <?php echo esc_js( __( 'Save & Connect with Instagram', 'post-forwarder' ) ); ?></button>' +
-                '<p class="description" style="margin-top:6px;"><?php echo esc_js( __( 'Requires a Professional Instagram account linked to a Facebook Page.', 'post-forwarder' ) ); ?></p>' +
-                '</td></tr>' +
                 '</table>' +
                 '<button type="button" class="button test-connection" style="margin-right: 8px;"><?php echo esc_js( __( 'Test Connection', 'post-forwarder' ) ); ?></button>' +
                 '<span class="connection-result" style="font-weight: 600;"></span>' +
@@ -1387,15 +1032,6 @@ function post_forwarder_settings_page() {
             e.preventDefault();
             var $connectRow = $(this).closest('tr');
             $connectRow.nextAll('.wp-manual-fields').slice(0, 2).toggle();
-        });
-
-        $(document).on('click', '.save-and-connect-meta', function() {
-            var $row = $(this).closest('.portal-row');
-            var key  = pfGetPortalKey($row);
-            var name = $.trim($row.find('input[name$="[name]"]').val());
-            if (!name) { alert('<?php echo esc_js( __( 'Please enter an Account Name first.', 'post-forwarder' ) ); ?>'); return; }
-            $('input[name="pending_meta_connect"]').val(key || name);
-            $row.closest('form').find('input[name="submit_portals"]').click();
         });
 
         // Expand/collapse connected portal detail.

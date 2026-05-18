@@ -36,7 +36,6 @@ require_once POST_FORWARDER_DIR . 'includes/review-notice.php';
 require_once POST_FORWARDER_DIR . 'includes/metabox.php';
 require_once POST_FORWARDER_DIR . 'includes/forwarding/linkedin.php';
 require_once POST_FORWARDER_DIR . 'includes/forwarding/x.php';
-require_once POST_FORWARDER_DIR . 'includes/forwarding/meta.php';
 require_once POST_FORWARDER_DIR . 'includes/forwarding/wordpress.php';
 require_once POST_FORWARDER_DIR . 'admin/handlers.php';
 require_once POST_FORWARDER_DIR . 'admin/calendar.php';
@@ -80,8 +79,8 @@ add_action( 'admin_notices', function () {
         $icon  = $r['success'] ? '✓' : '✗';
         $badge = '';
         if ( isset( $r['type'] ) ) {
-            $badge_colors = array( 'linkedin' => '#0a66c2', 'x' => '#000', 'wordpress' => '#3858e9', 'meta' => '#1877f2', 'facebook' => '#1877f2', 'instagram' => '#c13584' );
-            $badge_labels = array( 'linkedin' => 'LI', 'x' => 'X', 'wordpress' => 'WP', 'meta' => 'META', 'facebook' => 'FB', 'instagram' => 'IG' );
+            $badge_colors = array( 'linkedin' => '#0a66c2', 'x' => '#000', 'wordpress' => '#3858e9' );
+            $badge_labels = array( 'linkedin' => 'LI', 'x' => 'X', 'wordpress' => 'WP' );
             if ( isset( $badge_colors[ $r['type'] ] ) ) {
                 $badge = ' <span style="background:' . esc_attr( $badge_colors[ $r['type'] ] ) . ';color:#fff;font-size:10px;padding:1px 5px;border-radius:3px;">' . esc_html( $badge_labels[ $r['type'] ] ) . '</span>';
             }

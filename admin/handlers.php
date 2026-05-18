@@ -103,7 +103,7 @@ function post_forwarder_handle_portals_save() {
                     $key = $base . '-' . $n++;
                 }
             }
-            $allowed_types = array( 'linkedin', 'x', 'wordpress', 'meta', 'facebook', 'instagram' );
+            $allowed_types = array( 'linkedin', 'x', 'wordpress' );
             $type          = ( isset( $portal['type'] ) && in_array( $portal['type'], $allowed_types, true ) ) ? $portal['type'] : 'wordpress';
 
             if ( $type === 'linkedin' ) {
@@ -127,38 +127,6 @@ function post_forwarder_handle_portals_save() {
                 foreach ( array( 'access_token', 'refresh_token', 'token_expires', 'refresh_token_expires', 'x_user_id', 'x_username', 'last_error' ) as $token_field ) {
                     if ( isset( $existing_mappings_for_save[ $key ][ $token_field ] ) ) {
                         $portals[ $key ][ $token_field ] = $existing_mappings_for_save[ $key ][ $token_field ];
-                    }
-                }
-            } elseif ( $type === 'meta' ) {
-                $portals[ $key ] = array(
-                    'type'              => 'meta',
-                    'name'              => sanitize_text_field( $portal['name'] ),
-                    'post_to_facebook'  => ! empty( $portal['post_to_facebook'] ),
-                    'post_to_instagram' => ! empty( $portal['post_to_instagram'] ),
-                );
-                foreach ( array( 'access_token', 'page_id', 'page_name', 'instagram_account_id', 'meta_auth_mode', 'pending_pages', 'last_error' ) as $pf ) {
-                    if ( isset( $existing_mappings_for_save[ $key ][ $pf ] ) ) {
-                        $portals[ $key ][ $pf ] = $existing_mappings_for_save[ $key ][ $pf ];
-                    }
-                }
-            } elseif ( $type === 'facebook' ) {
-                $portals[ $key ] = array(
-                    'type' => 'facebook',
-                    'name' => sanitize_text_field( $portal['name'] ),
-                );
-                foreach ( array( 'access_token', 'page_id', 'page_name', 'pending_pages', 'last_error' ) as $pf ) {
-                    if ( isset( $existing_mappings_for_save[ $key ][ $pf ] ) ) {
-                        $portals[ $key ][ $pf ] = $existing_mappings_for_save[ $key ][ $pf ];
-                    }
-                }
-            } elseif ( $type === 'instagram' ) {
-                $portals[ $key ] = array(
-                    'type' => 'instagram',
-                    'name' => sanitize_text_field( $portal['name'] ),
-                );
-                foreach ( array( 'access_token', 'page_id', 'page_name', 'instagram_account_id', 'pending_pages', 'last_error' ) as $pf ) {
-                    if ( isset( $existing_mappings_for_save[ $key ][ $pf ] ) ) {
-                        $portals[ $key ][ $pf ] = $existing_mappings_for_save[ $key ][ $pf ];
                     }
                 }
             } else {
@@ -258,21 +226,6 @@ function post_forwarder_handle_portals_save() {
                 ) ) );
                 exit;
             }
-        }
-    }
-
-    // Save & Connect — Meta / Facebook / Instagram via relay.
-    if ( ! empty( $_POST['pending_meta_connect'] ) ) {
-        $meta_connect_key  = sanitize_key( wp_unslash( $_POST['pending_meta_connect'] ) );
-        $meta_relay        = post_forwarder_relay_url();
-        $meta_portal_types = array( 'meta', 'facebook', 'instagram' );
-        if ( $meta_relay && isset( $portals[ $meta_connect_key ] ) && in_array( $portals[ $meta_connect_key ]['type'], $meta_portal_types, true ) ) {
-            wp_redirect( $meta_relay . '/meta/start?' . http_build_query( array(
-                'return_url' => $settings_url,
-                'portal_key' => $meta_connect_key,
-                'wp_nonce'   => wp_create_nonce( 'meta_oauth_' . $meta_connect_key ),
-            ) ) );
-            exit;
         }
     }
 
@@ -600,7 +553,7 @@ function post_forwarder_ajax_add_channel() {
         wp_send_json_error( array( 'message' => __( 'Channel name is required.', 'post-forwarder' ) ) );
     }
 
-    $allowed_types = array( 'linkedin', 'x', 'wordpress', 'meta', 'facebook', 'instagram' );
+    $allowed_types = array( 'linkedin', 'x', 'wordpress' );
     if ( ! in_array( $type, $allowed_types, true ) ) {
         $type = 'wordpress';
     }
@@ -625,15 +578,6 @@ function post_forwarder_ajax_add_channel() {
             break;
         case 'x':
             $mappings[ $key ] = array( 'type' => 'x', 'name' => $name );
-            break;
-        case 'meta':
-            $mappings[ $key ] = array( 'type' => 'meta', 'name' => $name, 'post_to_facebook' => true, 'post_to_instagram' => false );
-            break;
-        case 'facebook':
-            $mappings[ $key ] = array( 'type' => 'facebook', 'name' => $name );
-            break;
-        case 'instagram':
-            $mappings[ $key ] = array( 'type' => 'instagram', 'name' => $name );
             break;
         default:
             $mappings[ $key ] = array( 'type' => 'wordpress', 'name' => $name, 'url' => $url, 'user' => $user, 'password' => $pass );
@@ -660,13 +604,6 @@ function post_forwarder_ajax_add_channel() {
             'wp_nonce'   => wp_create_nonce( 'x_oauth_' . $key ),
             'wp_site'    => admin_url(),
         ) );
-    } elseif ( in_array( $type, array( 'meta', 'facebook', 'instagram' ), true ) && $relay ) {
-        $oauth_url = $relay . '/meta/start?' . http_build_query( array(
-            'return_url' => $settings_url,
-            'portal_key' => $key,
-            'wp_nonce'   => wp_create_nonce( 'meta_oauth_' . $key ),
-            'wp_site'    => admin_url(),
-        ) );
     } elseif ( 'wordpress' === $type && $url && ! $user ) {
         // App Password flow: redirect to target site's authorize page.
         $nonce       = wp_create_nonce( 'wp_auth_' . $key );
@@ -689,9 +626,6 @@ function post_forwarder_ajax_add_channel() {
     $platform_colors = array(
         'linkedin'  => array( 'bg' => '#0a66c2', 'label' => 'in' ),
         'x'         => array( 'bg' => '#000000', 'label' => 'X' ),
-        'meta'      => array( 'bg' => '#1877f2', 'label' => 'f' ),
-        'facebook'  => array( 'bg' => '#1877f2', 'label' => 'FB' ),
-        'instagram' => array( 'bg' => '#c13584', 'label' => 'IG' ),
         'wordpress' => array( 'bg' => '#3858e9', 'label' => 'W' ),
     );
     $color     = $platform_colors[ $type ]['bg'] ?? '#555';

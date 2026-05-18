@@ -182,27 +182,6 @@ function post_forwarder_forward_post($post_id) {
             continue;
         }
 
-        // Route to Meta / Facebook / Instagram.
-        if ( $target_type === 'meta' || $target_type === 'facebook' || $target_type === 'instagram' ) {
-            if ( $target_type === 'facebook' ) {
-                $result = post_forwarder_forward_to_facebook( $post, $target, $featured_image_url );
-            } elseif ( $target_type === 'instagram' ) {
-                $result = post_forwarder_forward_to_instagram( $post, $target, $featured_image_url );
-            } else {
-                $result = post_forwarder_forward_to_meta( $post, $target, $featured_image_url );
-            }
-            $portal_results[$xproduct] = array(
-                'name'    => $portal_name,
-                'type'    => $target_type,
-                'success' => $result['success'],
-                'message' => $result['message'],
-            );
-            if ( $result['success'] ) {
-                $forwarding_successful = true;
-                $successful_portals[]  = $xproduct;
-            }
-            continue;
-        }
 
         // Route to X (Twitter) if this is an X account
         if ( $target_type === 'x' ) {

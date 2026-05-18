@@ -183,12 +183,6 @@ function post_forwarder_schedule_forward( $post_id, array $channel_keys, $fallba
             $results[ $key ] = post_forwarder_forward_to_linkedin( $post, $mapping );
         } elseif ( 'x' === $type ) {
             $results[ $key ] = post_forwarder_forward_to_x( $post, $mapping, $key );
-        } elseif ( 'facebook' === $type ) {
-            $results[ $key ] = post_forwarder_forward_to_facebook( $post, $mapping, $featured_image_url );
-        } elseif ( 'instagram' === $type ) {
-            $results[ $key ] = post_forwarder_forward_to_instagram( $post, $mapping, $featured_image_url );
-        } elseif ( 'meta' === $type ) {
-            $results[ $key ] = post_forwarder_forward_to_meta( $post, $mapping, $featured_image_url );
         } elseif ( 'wordpress' === $type ) {
             // WP-to-WP forwarding reuses the full forward flow with a direct call.
             $xproducts_backup = get_post_meta( $post_id, 'product', false );
