@@ -105,9 +105,9 @@ No. The plugin uses OAuth 2.0 with `offline.access` scope, which gives long-live
 
 LinkedIn tokens are valid for 60 days. The plugin shows the expiry date in the portal settings. Reconnect before they expire to avoid forwarding failures.
 
-= Do I need the relay server? =
+= Do I need to set up a relay server? =
 
-Only for LinkedIn, X, and Meta. WordPress-to-WordPress forwarding works without it.
+No. The plugin includes a built-in shared relay that handles LinkedIn, X, and Meta OAuth automatically. WordPress-to-WordPress forwarding doesn't use a relay at all. Advanced users who want to self-host can, but it's entirely optional.
 
 = Can I forward to multiple destinations at once? =
 
