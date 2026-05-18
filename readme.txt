@@ -187,4 +187,3 @@ Major update adding LinkedIn, X, and Meta (Facebook + Instagram) forwarding. A r
 **Minimum Requirements:**
 * WordPress 5.6+
 * PHP 7.4+
-* Cloudflare account (free tier) for the relay server — required for LinkedIn, X, and Meta
