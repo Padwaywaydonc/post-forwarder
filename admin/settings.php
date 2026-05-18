@@ -695,6 +695,8 @@ function post_forwarder_settings_page() {
                                         <option value="linkedin"><?php esc_html_e( 'LinkedIn Account', 'post-forwarder' ); ?></option>
                                         <option value="x"><?php esc_html_e( 'X (Twitter) Account', 'post-forwarder' ); ?></option>
                                         <option value="meta"><?php esc_html_e( 'Meta (Facebook + Instagram)', 'post-forwarder' ); ?></option>
+                                        <option value="facebook"><?php esc_html_e( 'Facebook Page', 'post-forwarder' ); ?></option>
+                                        <option value="instagram"><?php esc_html_e( 'Instagram', 'post-forwarder' ); ?></option>
                                     </select>
                                 </td>
                             </tr>
