@@ -779,6 +779,19 @@ function post_forwarder_settings_page() {
                                     <button type="button" class="button save-and-connect-meta" style="background:#1877f2;border-color:#1877f2;color:#fff;">&#10132; <?php esc_html_e( 'Save & Connect with Meta', 'post-forwarder' ); ?></button>
                                 </td>
                             </tr>
+                            <tr class="fields-facebook" style="display:none;">
+                                <th><?php esc_html_e( 'Connection', 'post-forwarder' ); ?></th>
+                                <td>
+                                    <button type="button" class="button save-and-connect-meta" style="background:#1877f2;border-color:#1877f2;color:#fff;">&#10132; <?php esc_html_e( 'Save & Connect with Facebook', 'post-forwarder' ); ?></button>
+                                </td>
+                            </tr>
+                            <tr class="fields-instagram" style="display:none;">
+                                <th><?php esc_html_e( 'Connection', 'post-forwarder' ); ?></th>
+                                <td>
+                                    <button type="button" class="button save-and-connect-meta" style="background:#c13584;border-color:#c13584;color:#fff;">&#10132; <?php esc_html_e( 'Save & Connect with Instagram', 'post-forwarder' ); ?></button>
+                                    <p class="description"><?php esc_html_e( 'Requires a Professional (Business/Creator) Instagram account linked to a Facebook Page you manage.', 'post-forwarder' ); ?></p>
+                                </td>
+                            </tr>
                         </table>
                         <button type="button" class="button test-connection" style="margin-right: 8px;"><?php esc_html_e( 'Test Connection', 'post-forwarder' ); ?></button>
                         <span class="connection-result" style="font-weight: 600;"></span>
