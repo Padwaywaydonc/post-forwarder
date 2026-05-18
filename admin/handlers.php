@@ -261,11 +261,12 @@ function post_forwarder_handle_portals_save() {
         }
     }
 
-    // Save & Connect — Meta (Facebook + Instagram) via relay.
+    // Save & Connect — Meta / Facebook / Instagram via relay.
     if ( ! empty( $_POST['pending_meta_connect'] ) ) {
-        $meta_connect_key = sanitize_key( wp_unslash( $_POST['pending_meta_connect'] ) );
-        $meta_relay       = post_forwarder_relay_url();
-        if ( $meta_relay && isset( $portals[ $meta_connect_key ] ) && 'meta' === $portals[ $meta_connect_key ]['type'] ) {
+        $meta_connect_key  = sanitize_key( wp_unslash( $_POST['pending_meta_connect'] ) );
+        $meta_relay        = post_forwarder_relay_url();
+        $meta_portal_types = array( 'meta', 'facebook', 'instagram' );
+        if ( $meta_relay && isset( $portals[ $meta_connect_key ] ) && in_array( $portals[ $meta_connect_key ]['type'], $meta_portal_types, true ) ) {
             wp_redirect( $meta_relay . '/meta/start?' . http_build_query( array(
                 'return_url' => $settings_url,
                 'portal_key' => $meta_connect_key,
