@@ -903,6 +903,34 @@ function post_forwarder_settings_page() {
                                     ? '<a href="' . esc_url( $meta_connect_url ) . '" class="button button-small" style="background:#1877f2;border-color:#1877f2;color:#fff;">&#10132; ' . esc_html__( 'Connect', 'post-forwarder' ) . '</a>'
                                     : '';
                             }
+                        } elseif ( $is_facebook ) {
+                            $summary_badge = '<span style="background:#1877f2;color:#fff;font-size:11px;padding:2px 8px;border-radius:3px;flex-shrink:0;">FB</span>';
+                            if ( $is_facebook_connected ) {
+                                $summary_status = '<span style="color:#00a32a;font-weight:600;">&#10003; Connected</span>';
+                                $summary_status .= ! empty( $mapping['page_name'] ) ? ' <span style="color:#666;font-size:12px;">' . esc_html( $mapping['page_name'] ) . '</span>' : '';
+                                $summary_action  = $meta_connect_url
+                                    ? '<a href="' . esc_url( $meta_connect_url ) . '" class="button button-secondary button-small">' . esc_html__( 'Reconnect', 'post-forwarder' ) . '</a>'
+                                    : '';
+                            } else {
+                                $summary_status = '<span style="color:#999;">' . esc_html__( 'Not connected', 'post-forwarder' ) . '</span>';
+                                $summary_action  = $meta_connect_url
+                                    ? '<a href="' . esc_url( $meta_connect_url ) . '" class="button button-small" style="background:#1877f2;border-color:#1877f2;color:#fff;">&#10132; ' . esc_html__( 'Connect', 'post-forwarder' ) . '</a>'
+                                    : '';
+                            }
+                        } elseif ( $is_instagram ) {
+                            $summary_badge = '<span style="background:#c13584;color:#fff;font-size:11px;padding:2px 8px;border-radius:3px;flex-shrink:0;">IG</span>';
+                            if ( $is_instagram_connected ) {
+                                $summary_status = '<span style="color:#00a32a;font-weight:600;">&#10003; Connected</span>';
+                                $summary_status .= ! empty( $mapping['page_name'] ) ? ' <span style="color:#666;font-size:12px;">' . esc_html__( 'via', 'post-forwarder' ) . ' ' . esc_html( $mapping['page_name'] ) . '</span>' : '';
+                                $summary_action  = $meta_connect_url
+                                    ? '<a href="' . esc_url( $meta_connect_url ) . '" class="button button-secondary button-small">' . esc_html__( 'Reconnect', 'post-forwarder' ) . '</a>'
+                                    : '';
+                            } else {
+                                $summary_status = '<span style="color:#999;">' . esc_html__( 'Not connected', 'post-forwarder' ) . '</span>';
+                                $summary_action  = $meta_connect_url
+                                    ? '<a href="' . esc_url( $meta_connect_url ) . '" class="button button-small" style="background:#c13584;border-color:#c13584;color:#fff;">&#10132; ' . esc_html__( 'Connect', 'post-forwarder' ) . '</a>'
+                                    : '';
+                            }
                         } elseif ( $is_x ) {
                             $summary_badge = '<span style="background:#000;color:#fff;font-size:11px;padding:2px 8px;border-radius:3px;flex-shrink:0;">X</span>';
                             if ( $is_x_connected ) {
