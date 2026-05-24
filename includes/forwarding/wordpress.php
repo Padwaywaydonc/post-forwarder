@@ -199,6 +199,22 @@ function post_forwarder_forward_post($post_id) {
             continue;
         }
 
+        // Route to Meta (Facebook + Instagram) if this is a Meta account
+        if ( $target_type === 'meta' ) {
+            $result = post_forwarder_forward_to_meta( $post, $target, $featured_image_url );
+            $portal_results[$xproduct] = array(
+                'name'    => $portal_name,
+                'type'    => 'meta',
+                'success' => $result['success'],
+                'message' => $result['message'],
+            );
+            if ( $result['success'] ) {
+                $forwarding_successful = true;
+                $successful_portals[]  = $xproduct;
+            }
+            continue;
+        }
+
         // WordPress portal forwarding.
         // Use wp_site_url (stored during OAuth connect) for the REST API base — this is the
         // real WordPress install path, which may differ from the home URL in subdirectory setups.
