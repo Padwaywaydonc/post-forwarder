@@ -216,11 +216,14 @@ function post_forwarder_refresh_x_tokens() {
             continue;
         }
 
+        $x_pro_body = array( 'refresh_token' => $m['refresh_token'] );
+        if ( ! empty( $m['client_id'] ) )     { $x_pro_body['client_id']     = $m['client_id']; }
+        if ( ! empty( $m['client_secret'] ) ) { $x_pro_body['client_secret'] = $m['client_secret']; }
         $resp = wp_remote_post(
             $relay . '/x/refresh',
             array(
                 'headers' => array( 'Content-Type' => 'application/json' ),
-                'body'    => wp_json_encode( array( 'refresh_token' => $m['refresh_token'] ) ),
+                'body'    => wp_json_encode( $x_pro_body ),
                 'timeout' => 20,
             )
         );
