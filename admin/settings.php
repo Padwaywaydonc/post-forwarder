@@ -634,13 +634,18 @@ function post_forwarder_settings_page() {
                         $is_x_connected = $is_x
                             && ! empty( $mapping['access_token'] )
                             && ( ! isset( $mapping['token_expires'] ) || $mapping['token_expires'] > time() );
-                        $x_oauth_url    = ( $is_x && $relay_url_val )
-                            ? $relay_url_val . '/x/start?' . http_build_query( array(
+                        if ( $is_x && $relay_url_val ) {
+                            $x_oauth_args = array(
                                 'return_url' => admin_url( 'admin.php?page=post-forwarder-settings' ),
                                 'portal_key' => $key,
                                 'wp_nonce'   => wp_create_nonce( 'x_oauth_' . $key ),
-                            ) )
-                            : '';
+                            );
+                            if ( ! empty( $mapping['client_id'] ) )     { $x_oauth_args['client_id']     = $mapping['client_id']; }
+                            if ( ! empty( $mapping['client_secret'] ) ) { $x_oauth_args['client_secret'] = $mapping['client_secret']; }
+                            $x_oauth_url = $relay_url_val . '/x/start?' . http_build_query( $x_oauth_args );
+                        } else {
+                            $x_oauth_url = '';
+                        }
 
                         $wp_button_connected = ( 'wordpress' === $mapping_type )
                             && ! empty( $mapping['user'] )
