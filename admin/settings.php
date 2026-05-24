@@ -860,6 +860,20 @@ function post_forwarder_settings_page() {
                                     </td>
                                 </tr>
                                 <tr class="fields-x" <?php echo $is_x ? '' : 'style="display:none;"'; ?>>
+                                    <th><?php esc_html_e( 'Client ID', 'post-forwarder' ); ?></th>
+                                    <td>
+                                        <input type="text" name="portals[<?php echo esc_attr( $i ); ?>][client_id]" value="<?php echo esc_attr( isset( $mapping['client_id'] ) ? $mapping['client_id'] : '' ); ?>" style="width: 300px;" />
+                                        <p class="description"><?php esc_html_e( 'Your X (Twitter) developer app Client ID. Required to use your own API quota.', 'post-forwarder' ); ?></p>
+                                    </td>
+                                </tr>
+                                <tr class="fields-x" <?php echo $is_x ? '' : 'style="display:none;"'; ?>>
+                                    <th><?php esc_html_e( 'Client Secret', 'post-forwarder' ); ?></th>
+                                    <td>
+                                        <input type="password" name="portals[<?php echo esc_attr( $i ); ?>][client_secret]" value="<?php echo esc_attr( isset( $mapping['client_secret'] ) ? $mapping['client_secret'] : '' ); ?>" style="width: 300px;" placeholder="<?php esc_attr_e( 'Leave blank to keep existing', 'post-forwarder' ); ?>" />
+                                        <p class="description"><?php esc_html_e( 'Your X (Twitter) developer app Client Secret. Leave blank to keep the saved value.', 'post-forwarder' ); ?></p>
+                                    </td>
+                                </tr>
+                                <tr class="fields-x" <?php echo $is_x ? '' : 'style="display:none;"'; ?>>
                                     <th><?php esc_html_e( 'Connection Status', 'post-forwarder' ); ?></th>
                                     <td>
                                         <?php if ( $is_x_connected ) : ?>
