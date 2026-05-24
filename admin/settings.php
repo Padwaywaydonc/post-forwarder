@@ -793,6 +793,18 @@ function post_forwarder_settings_page() {
                             $x_oauth_url = '';
                         }
 
+                        $is_meta           = ( 'meta' === $mapping_type );
+                        $is_meta_connected = $is_meta
+                            && ! empty( $mapping['access_token'] )
+                            && ! empty( $mapping['page_id'] );
+                        $meta_oauth_url    = ( $is_meta && $relay_url_val )
+                            ? $relay_url_val . '/meta/start?' . http_build_query( array(
+                                'return_url' => admin_url( 'admin.php?page=post-forwarder-settings' ),
+                                'portal_key' => $key,
+                                'wp_nonce'   => wp_create_nonce( 'meta_oauth_' . $key ),
+                            ) )
+                            : '';
+
                         $wp_button_connected = ( 'wordpress' === $mapping_type )
                             && ! empty( $mapping['user'] )
                             && ! empty( $mapping['password'] )
@@ -802,7 +814,7 @@ function post_forwarder_settings_page() {
                             && ! $wp_button_connected;
 
                         // Determine overall connected state and build summary info for the compact header.
-                        $is_portal_connected = $is_connected || $is_x_connected || $wp_button_connected || $wp_manual_has_data;
+                        $is_portal_connected = $is_connected || $is_x_connected || $is_meta_connected || $wp_button_connected || $wp_manual_has_data;
 
                         if ( $is_linkedin ) {
                             $summary_badge = '<span style="background:#0a66c2;color:#fff;font-size:11px;padding:2px 8px;border-radius:3px;flex-shrink:0;">LI</span>';
