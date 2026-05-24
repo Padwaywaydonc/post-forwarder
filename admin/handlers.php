@@ -121,9 +121,15 @@ function post_forwarder_handle_portals_save() {
                 }
             } elseif ( $type === 'x' ) {
                 $portals[ $key ] = array(
-                    'type' => 'x',
-                    'name' => sanitize_text_field( $portal['name'] ),
+                    'type'          => 'x',
+                    'name'          => sanitize_text_field( $portal['name'] ),
+                    'client_id'     => sanitize_text_field( isset( $portal['client_id'] )     ? $portal['client_id']     : '' ),
+                    'client_secret' => sanitize_text_field( isset( $portal['client_secret'] ) ? $portal['client_secret'] : '' ),
                 );
+                // Preserve existing client_secret when the submitted value is empty (masked display).
+                if ( empty( $portals[ $key ]['client_secret'] ) && ! empty( $existing_mappings_for_save[ $key ]['client_secret'] ) ) {
+                    $portals[ $key ]['client_secret'] = $existing_mappings_for_save[ $key ]['client_secret'];
+                }
                 foreach ( array( 'access_token', 'refresh_token', 'token_expires', 'refresh_token_expires', 'x_user_id', 'x_username', 'last_error' ) as $token_field ) {
                     if ( isset( $existing_mappings_for_save[ $key ][ $token_field ] ) ) {
                         $portals[ $key ][ $token_field ] = $existing_mappings_for_save[ $key ][ $token_field ];
