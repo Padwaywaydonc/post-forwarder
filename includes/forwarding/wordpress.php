@@ -185,7 +185,7 @@ function post_forwarder_forward_post($post_id) {
 
         // Route to X (Twitter) if this is an X account
         if ( $target_type === 'x' ) {
-            $result = post_forwarder_forward_to_x( $post, $target, $xproduct );
+            $result = post_forwarder_forward_to_x( $post, $target, $xproduct, $featured_image_url );
             $portal_results[$xproduct] = array(
                 'name'    => $portal_name,
                 'type'    => 'x',
