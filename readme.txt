@@ -74,7 +74,7 @@ Read this section before configuring each portal type to avoid unexpected errors
 **Notes:**
 * The free X developer tier allows **1,500 tweet writes per month** per app. Each user's app has its own separate quota.
 * X access tokens are long-lived. The plugin refreshes them automatically before expiry.
-* Featured images are attached directly to tweets (not just as link preview cards) when a thumbnail is set on the post.
+* **Featured image behaviour**: On the X free developer tier, images cannot be uploaded via the API directly. The tweet will contain the post URL, and X will automatically generate a link preview card showing the featured image — but only when your WordPress site is publicly accessible (not localhost). If your X developer app is on the **Basic plan ($100/month)**, the plugin will attach the image directly to the tweet regardless.
 
 = Meta (Facebook + Instagram) =
 
