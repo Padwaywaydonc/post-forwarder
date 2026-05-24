@@ -3,7 +3,39 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 /* Part of Post Forwarder plugin */
 
 // X (Twitter) post forwarding
-function post_forwarder_forward_to_x( $post, $mapping, $portal_key ) {
+/**
+ * Upload an image to X and return the media_id string, or null on failure.
+ * Uses the v1.1 simple-upload endpoint which accepts OAuth 2.0 user-context tokens.
+ */
+function post_forwarder_x_upload_media( $image_url, $access_token ) {
+    $img = wp_remote_get( $image_url, array( 'timeout' => 30 ) );
+    if ( is_wp_error( $img ) ) {
+        return null;
+    }
+    $img_body = wp_remote_retrieve_body( $img );
+    if ( empty( $img_body ) ) {
+        return null;
+    }
+    // X simple-upload: base64-encode the image and post as form data.
+    $response = wp_remote_post(
+        'https://upload.twitter.com/1.1/media/upload.json',
+        array(
+            'headers' => array(
+                'Authorization' => 'Bearer ' . $access_token,
+                'Content-Type'  => 'application/x-www-form-urlencoded',
+            ),
+            'body'    => 'media_data=' . rawurlencode( base64_encode( $img_body ) ),
+            'timeout' => 60,
+        )
+    );
+    if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
+        return null;
+    }
+    $data = json_decode( wp_remote_retrieve_body( $response ), true );
+    return ( is_array( $data ) && ! empty( $data['media_id_string'] ) ) ? $data['media_id_string'] : null;
+}
+
+function post_forwarder_forward_to_x( $post, $mapping, $portal_key, $featured_image_url = null ) {
     if ( empty( $mapping['access_token'] ) ) {
         post_forwarder_log_error( 'X post skipped: no access token stored.' );
         return array('success' => false, 'message' => __('No access token — please connect the account.', 'post-forwarder'));
