@@ -180,11 +180,18 @@ function post_forwarder_handle_portals_save() {
         $x_connect_key  = sanitize_key( wp_unslash( $_POST['pending_x_connect'] ) );
         $x_relay_target = post_forwarder_relay_url();
         if ( $x_relay_target && isset( $portals[ $x_connect_key ] ) && 'x' === $portals[ $x_connect_key ]['type'] ) {
-            wp_redirect( $x_relay_target . '/x/start?' . http_build_query( array(
+            $x_redirect_args = array(
                 'return_url' => $settings_url,
                 'portal_key' => $x_connect_key,
                 'wp_nonce'   => wp_create_nonce( 'x_oauth_' . $x_connect_key ),
-            ) ) );
+            );
+            if ( ! empty( $portals[ $x_connect_key ]['client_id'] ) ) {
+                $x_redirect_args['client_id'] = $portals[ $x_connect_key ]['client_id'];
+            }
+            if ( ! empty( $portals[ $x_connect_key ]['client_secret'] ) ) {
+                $x_redirect_args['client_secret'] = $portals[ $x_connect_key ]['client_secret'];
+            }
+            wp_redirect( $x_relay_target . '/x/start?' . http_build_query( $x_redirect_args ) );
             exit;
         }
     }
