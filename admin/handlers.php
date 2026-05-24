@@ -611,12 +611,19 @@ function post_forwarder_ajax_add_channel() {
             'wp_site'    => admin_url(),
         ) );
     } elseif ( 'x' === $type && $relay ) {
-        $oauth_url = $relay . '/x/start?' . http_build_query( array(
+        $x_ajax_args = array(
             'return_url' => $settings_url,
             'portal_key' => $key,
             'wp_nonce'   => wp_create_nonce( 'x_oauth_' . $key ),
             'wp_site'    => admin_url(),
-        ) );
+        );
+        if ( ! empty( $mappings[ $key ]['client_id'] ) ) {
+            $x_ajax_args['client_id'] = $mappings[ $key ]['client_id'];
+        }
+        if ( ! empty( $mappings[ $key ]['client_secret'] ) ) {
+            $x_ajax_args['client_secret'] = $mappings[ $key ]['client_secret'];
+        }
+        $oauth_url = $relay . '/x/start?' . http_build_query( $x_ajax_args );
     } elseif ( 'wordpress' === $type && $url && ! $user ) {
         // App Password flow: redirect to target site's authorize page.
         $nonce       = wp_create_nonce( 'wp_auth_' . $key );
