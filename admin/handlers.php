@@ -135,6 +135,18 @@ function post_forwarder_handle_portals_save() {
                         $portals[ $key ][ $token_field ] = $existing_mappings_for_save[ $key ][ $token_field ];
                     }
                 }
+            } elseif ( $type === 'meta' ) {
+                $portals[ $key ] = array(
+                    'type'              => 'meta',
+                    'name'              => sanitize_text_field( $portal['name'] ),
+                    'post_to_facebook'  => ! empty( $portal['post_to_facebook'] ),
+                    'post_to_instagram' => ! empty( $portal['post_to_instagram'] ),
+                );
+                foreach ( array( 'access_token', 'page_id', 'page_name', 'instagram_account_id', 'last_error' ) as $token_field ) {
+                    if ( isset( $existing_mappings_for_save[ $key ][ $token_field ] ) ) {
+                        $portals[ $key ][ $token_field ] = $existing_mappings_for_save[ $key ][ $token_field ];
+                    }
+                }
             } else {
                 if ( empty( $portal['url'] ) ) {
                     continue;
