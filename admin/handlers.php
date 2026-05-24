@@ -509,7 +509,7 @@ function post_forwarder_enqueue_scripts( $hook ) {
                         if (!notices) { return; }
                         data.results.forEach(function(r, i) {
                             var icon  = r.success ? "✓" : "✗";
-                            var badge = r.type === "linkedin" ? " [LI]" : r.type === "x" ? " [X]" : " [WP]";
+                            var badge = r.type === "linkedin" ? " [LI]" : r.type === "x" ? " [X]" : r.type === "meta" ? " [FB]" : " [WP]";
                             notices.createNotice(
                                 r.success ? "success" : "error",
                                 "Post Forwarder" + badge + " " + icon + " " + r.name + ": " + r.message,
