@@ -22,11 +22,15 @@ function post_forwarder_forward_to_x( $post, $mapping, $portal_key ) {
             return array('success' => false, 'message' => __('Token expired and relay not configured — please reconnect.', 'post-forwarder'));
         }
 
+        $x_refresh_body = array( 'refresh_token' => $mapping['refresh_token'] );
+        if ( ! empty( $mapping['client_id'] ) )     { $x_refresh_body['client_id']     = $mapping['client_id']; }
+        if ( ! empty( $mapping['client_secret'] ) ) { $x_refresh_body['client_secret'] = $mapping['client_secret']; }
+
         $refresh_response = wp_remote_post(
             $relay_url . '/x/refresh',
             array(
                 'headers' => array( 'Content-Type' => 'application/json' ),
-                'body'    => wp_json_encode( array( 'refresh_token' => $mapping['refresh_token'] ) ),
+                'body'    => wp_json_encode( $x_refresh_body ),
                 'timeout' => 20,
             )
         );
