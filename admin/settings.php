@@ -585,6 +585,20 @@ function post_forwarder_settings_page() {
                                 </td>
                             </tr>
                             <tr class="fields-x" style="display:none;">
+                                <th><?php esc_html_e( 'Client ID', 'post-forwarder' ); ?></th>
+                                <td>
+                                    <input type="text" name="portals[0][client_id]" placeholder="<?php esc_attr_e( 'X App Client ID', 'post-forwarder' ); ?>" style="width: 300px;" />
+                                    <p class="description"><?php esc_html_e( 'Your X (Twitter) developer app Client ID. Required to use your own API quota.', 'post-forwarder' ); ?></p>
+                                </td>
+                            </tr>
+                            <tr class="fields-x" style="display:none;">
+                                <th><?php esc_html_e( 'Client Secret', 'post-forwarder' ); ?></th>
+                                <td>
+                                    <input type="password" name="portals[0][client_secret]" placeholder="<?php esc_attr_e( 'X App Client Secret', 'post-forwarder' ); ?>" style="width: 300px;" />
+                                    <p class="description"><?php esc_html_e( 'Your X (Twitter) developer app Client Secret.', 'post-forwarder' ); ?></p>
+                                </td>
+                            </tr>
+                            <tr class="fields-x" style="display:none;">
                                 <th><?php esc_html_e( 'Connection Status', 'post-forwarder' ); ?></th>
                                 <td>
                                     <?php if ( post_forwarder_relay_url() ) : ?>
