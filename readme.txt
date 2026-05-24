@@ -206,10 +206,11 @@ Major update adding LinkedIn, X, and Meta (Facebook + Instagram) forwarding. A r
 * Meta Graph API v21 (Pages Feed, Photos, Instagram Media)
 
 **Security:**
-* OAuth credentials for LinkedIn, X, and Meta are stored only in the relay server — never in the WordPress database
+* LinkedIn and Meta OAuth access tokens are stored in the WordPress database (encrypted at rest if your host supports it); X access tokens and per-user Client ID/Secret are also stored in the WordPress database
 * All form inputs are sanitized and validated
 * WordPress nonces protect all forms and OAuth callbacks
 * One-time tokens with short TTLs are used for the relay-to-WordPress credential handoff
+* The Client Secret field never echoes its stored value back to the browser — submitting blank preserves the saved value
 
 **Minimum Requirements:**
 * WordPress 5.6+
