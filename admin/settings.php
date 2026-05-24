@@ -1007,6 +1007,8 @@ function post_forwarder_settings_page() {
                     ? '<button type="button" class="button save-and-connect-linkedin" style="background:#0a66c2;border-color:#0a66c2;color:#fff;">&#10132; <?php echo esc_js( __( 'Save & Connect with LinkedIn', 'post-forwarder' ) ); ?></button>'
                     : '<span style="color:#666;"><?php echo esc_js( __( 'Save the account first, then click Connect with LinkedIn.', 'post-forwarder' ) ); ?></span>'
                 ) + '</td></tr>' +
+                '<tr class="fields-x" style="display:none;"><th><?php echo esc_js( __( 'Client ID', 'post-forwarder' ) ); ?></th><td><input type="text" name="portals[' + n + '][client_id]" placeholder="<?php echo esc_js( __( 'X App Client ID', 'post-forwarder' ) ); ?>" style="width: 300px;" /><p class="description"><?php echo esc_js( __( 'Your X developer app Client ID. Required to use your own API quota.', 'post-forwarder' ) ); ?></p></td></tr>' +
+                '<tr class="fields-x" style="display:none;"><th><?php echo esc_js( __( 'Client Secret', 'post-forwarder' ) ); ?></th><td><input type="password" name="portals[' + n + '][client_secret]" placeholder="<?php echo esc_js( __( 'X App Client Secret', 'post-forwarder' ) ); ?>" style="width: 300px;" /></td></tr>' +
                 '<tr class="fields-x" style="display:none;"><th><?php echo esc_js( __( 'Connection Status', 'post-forwarder' ) ); ?></th><td>' +
                 ( relayMode
                     ? '<button type="button" class="button save-and-connect-x" style="background:#000;border-color:#000;color:#fff;">&#10132; <?php echo esc_js( __( 'Save & Connect with X', 'post-forwarder' ) ); ?></button>'
