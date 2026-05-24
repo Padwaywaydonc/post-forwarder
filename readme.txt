@@ -18,7 +18,7 @@ Post Forwarder lets you syndicate content from one WordPress site to any combina
 
 * **WordPress sites** — forwards via REST API with taxonomy mapping, featured image upload, ACF fields, and duplicate prevention. One-click authorization using WordPress Application Passwords (5.6+), or enter credentials manually.
 * **LinkedIn** — posts as a link share with excerpt and featured image. Supports personal profiles and organisation pages. Authorized via OAuth through the relay server.
-* **X (Twitter)** — posts a text thread with the post URL. Authorized via OAuth 2.0 through the relay server.
+* **X (Twitter)** — posts the title, featured image, and post URL as a tweet. Authorized via OAuth 2.0 through the relay server. Requires a free X developer account.
 * **Meta (Facebook + Instagram)** — posts to a Facebook Page feed (with image attachment) and/or an Instagram Business profile. Authorized via Facebook OAuth through the relay server.
 
 **Relay Server**
