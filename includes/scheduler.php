@@ -182,7 +182,7 @@ function post_forwarder_schedule_forward( $post_id, array $channel_keys, $fallba
         if ( 'linkedin' === $type ) {
             $results[ $key ] = post_forwarder_forward_to_linkedin( $post, $mapping );
         } elseif ( 'x' === $type ) {
-            $results[ $key ] = post_forwarder_forward_to_x( $post, $mapping, $key );
+            $results[ $key ] = post_forwarder_forward_to_x( $post, $mapping, $key, $featured_image_url );
         } elseif ( 'wordpress' === $type ) {
             // WP-to-WP forwarding reuses the full forward flow with a direct call.
             $xproducts_backup = get_post_meta( $post_id, 'product', false );
