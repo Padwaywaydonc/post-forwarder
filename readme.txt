@@ -122,7 +122,7 @@ No. Meta's Graph API does not allow posting to personal profiles. You need a Fac
 
 = Why does X posting fail with a billing or credits error? =
 
-X requires a paid API subscription for write access. The Basic plan ($100/month) is the minimum. The plugin's code is correct — you need an active paid plan on your X Developer account.
+Each developer app on X has a monthly quota (1,500 tweets/month on the free tier). If you see a credits or quota error, your app has exceeded its monthly limit. Wait until the next month, or upgrade to the X API Basic plan ($100/month) in the X Developer Portal for a higher quota. Make sure you entered your own Client ID and Secret in the portal settings — if those fields are blank, your posts are counted against the shared relay quota instead of your own app.
 
 = Do X tokens expire after 2 hours? =
 
