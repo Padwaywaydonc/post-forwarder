@@ -36,6 +36,7 @@ require_once POST_FORWARDER_DIR . 'includes/review-notice.php';
 require_once POST_FORWARDER_DIR . 'includes/metabox.php';
 require_once POST_FORWARDER_DIR . 'includes/forwarding/linkedin.php';
 require_once POST_FORWARDER_DIR . 'includes/forwarding/x.php';
+require_once POST_FORWARDER_DIR . 'includes/forwarding/meta.php';
 require_once POST_FORWARDER_DIR . 'includes/forwarding/wordpress.php';
 require_once POST_FORWARDER_DIR . 'admin/handlers.php';
 require_once POST_FORWARDER_DIR . 'admin/calendar.php';
