@@ -119,12 +119,22 @@ function post_forwarder_forward_to_x( $post, $mapping, $portal_key, $featured_im
 
     $tweet_text = $title . "\n\n" . $post_url;
 
+    $tweet_body = array( 'text' => $tweet_text );
+    if ( $featured_image_url ) {
+        $media_id = post_forwarder_x_upload_media( $featured_image_url, $mapping['access_token'] );
+        if ( $media_id ) {
+            $tweet_body['media'] = array( 'media_ids' => array( $media_id ) );
+        } else {
+            post_forwarder_log_error( 'X media upload failed for portal: ' . $portal_key . ' — posting text-only.' );
+        }
+    }
+
     $x_post_args = array(
         'headers' => array(
             'Authorization' => 'Bearer ' . $mapping['access_token'],
             'Content-Type'  => 'application/json',
         ),
-        'body'    => wp_json_encode( array( 'text' => $tweet_text ) ),
+        'body'    => wp_json_encode( $tweet_body ),
         'timeout' => 30,
     );
 
