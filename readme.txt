@@ -44,10 +44,37 @@ Read this section before configuring each portal type to avoid unexpected errors
 
 = X (Twitter) =
 
-* The plugin uses the built-in shared relay server — no additional configuration required.
-* **A paid X API subscription is required.** The free tier does not allow writing posts. The Basic plan ($100/month at time of writing) is the minimum tier that grants write access.
-* X access tokens obtained via OAuth 2.0 with `offline.access` scope are **long-lived** (they do not expire after 2 hours). The relay automatically refreshes them in the background when they near expiry.
-* If you see a "no credits" or billing error when forwarding, your X developer account needs an active paid plan — this is an X platform requirement that the plugin cannot work around.
+**You need a free X developer account to post tweets.** X limits write access per developer app, so each plugin user must connect their own app. This is free — X does not charge for a developer account or for the first 1,500 tweets per month.
+
+**Step 1 — Create an X developer account (one-time)**
+
+1. Go to [developer.twitter.com](https://developer.x.com) and sign in with your X account (any ordinary X account works).
+2. Click **Sign up** → agree to the terms → your developer account is created instantly.
+
+**Step 2 — Create an app and get your credentials**
+
+1. In the [Developer Portal](https://console.x.com), go to **Apps** in the left menu.
+2. Click **Create App** and give it any name (e.g. "My Post Forwarder").
+3. Once created, open the app and click **Keys & Tokens** → then **User authentication settings** → **Set up**.
+4. Choose:
+   - **App permissions**: Read and write
+   - **Type of App**: Web App, Automated App or Bot
+   - **Callback URI**: `https://post-forwarder-relay.sylwesterulatowski.workers.dev/x/callback` (replace with your relay URL if self-hosted)
+   - **Website URL**: your site URL
+5. Click **Save**. X shows a one-time dialog with your **Client ID** and **Client Secret** — copy both now and store them safely (the secret is never shown again).
+
+**Step 3 — Connect in the plugin**
+
+1. In **Post Forwarder → Settings → Connection Configuration**, add an X portal.
+2. Enter the **Client ID** and **Client Secret** you copied above.
+3. Click **Save Portals**, then click **Save & Connect with X** (or **Reconnect**).
+4. X will ask you to authorize the app — click **Authorize app**.
+5. You'll be redirected back and the portal shows ✓ Connected.
+
+**Notes:**
+* The free X developer tier allows **1,500 tweet writes per month** per app. Each user's app has its own separate quota.
+* X access tokens are long-lived. The plugin refreshes them automatically before expiry.
+* Featured images are attached directly to tweets (not just as link preview cards) when a thumbnail is set on the post.
 
 = Meta (Facebook + Instagram) =
 
