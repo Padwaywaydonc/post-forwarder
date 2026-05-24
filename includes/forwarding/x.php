@@ -113,11 +113,14 @@ function post_forwarder_forward_to_x( $post, $mapping, $portal_key ) {
         $relay_url = post_forwarder_relay_url();
         if ( $relay_url ) {
             post_forwarder_log_error( 'X got 401 — attempting token refresh for portal: ' . $portal_key );
+            $x_401_body = array( 'refresh_token' => $mapping['refresh_token'] );
+            if ( ! empty( $mapping['client_id'] ) )     { $x_401_body['client_id']     = $mapping['client_id']; }
+            if ( ! empty( $mapping['client_secret'] ) ) { $x_401_body['client_secret'] = $mapping['client_secret']; }
             $refresh_response = wp_remote_post(
                 $relay_url . '/x/refresh',
                 array(
                     'headers' => array( 'Content-Type' => 'application/json' ),
-                    'body'    => wp_json_encode( array( 'refresh_token' => $mapping['refresh_token'] ) ),
+                    'body'    => wp_json_encode( $x_401_body ),
                     'timeout' => 20,
                 )
             );
