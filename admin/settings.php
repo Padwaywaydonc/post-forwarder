@@ -932,13 +932,13 @@ function post_forwarder_settings_page() {
                                     <th><?php esc_html_e('Account Name', 'post-forwarder'); ?></th>
                                     <td><input type="text" name="portals[<?php echo esc_attr($i); ?>][name]" value="<?php echo esc_attr($mapping['name']); ?>" style="width: 300px;" /></td>
                                 </tr>
-                                <tr class="fields-wordpress" <?php echo ( $is_linkedin || $is_x ) ? 'style="display:none;"' : ''; ?>>
+                                <tr class="fields-wordpress" <?php echo ( $is_linkedin || $is_x || $is_meta ) ? 'style="display:none;"' : ''; ?>>
                                     <th><?php esc_html_e( 'URL', 'post-forwarder' ); ?></th>
                                     <td><input type="url" name="portals[<?php echo esc_attr($i); ?>][url]"
                                          value="<?php echo esc_attr( isset( $mapping['url'] ) ? $mapping['url'] : '' ); ?>"
                                          style="width: 400px;" /></td>
                                 </tr>
-                                <tr class="fields-wordpress" <?php echo ( $is_linkedin || $is_x ) ? 'style="display:none;"' : ''; ?>>
+                                <tr class="fields-wordpress" <?php echo ( $is_linkedin || $is_x || $is_meta ) ? 'style="display:none;"' : ''; ?>>
                                     <th><?php esc_html_e( 'Connection', 'post-forwarder' ); ?></th>
                                     <td>
                                         <?php if ( $wp_button_connected ) : ?>
