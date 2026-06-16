@@ -3,7 +3,7 @@
  * Plugin Name: Post Forwarder
  * Plugin URI: https://github.com/baba-gnu/post-forwarder
  * Description: Forwards posts to other WordPress sites via REST API with taxonomy mapping and featured image support.
- * Version: 2.1.0
+ * Version: 3.0.0
  * Author: Sylwester Ulatowski
  * Author email: sylwesterulatowski@gmail.com
  * License: GPL v2 or later
