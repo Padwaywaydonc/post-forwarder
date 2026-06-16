@@ -103,7 +103,7 @@ function post_forwarder_handle_portals_save() {
                     $key = $base . '-' . $n++;
                 }
             }
-            $allowed_types = array( 'linkedin', 'x', 'meta', 'wordpress' );
+            $allowed_types = array( 'linkedin', 'x', 'wordpress' );
             $type          = ( isset( $portal['type'] ) && in_array( $portal['type'], $allowed_types, true ) ) ? $portal['type'] : 'wordpress';
 
             if ( $type === 'linkedin' ) {
