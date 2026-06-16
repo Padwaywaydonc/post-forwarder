@@ -22,10 +22,33 @@ function post_forwarder_forward_to_linkedin($post, $mapping) {
         return array('success' => false, 'message' => __('No Author URN configured.', 'post-forwarder'));
     }
 
-    // Build commentary: use excerpt or strip post content
-    $commentary = !empty($post->post_excerpt)
+    // Build commentary: use excerpt or strip post content (LinkedIn max 3000 chars).
+    $commentary = ! empty( $post->post_excerpt )
         ? $post->post_excerpt
-        : wp_trim_words(wp_strip_all_tags($post->post_content), 60);
+        : wp_trim_words( wp_strip_all_tags( $post->post_content ), 60 );
+
+    // Append hashtags from WordPress post tags.
+    $tags       = get_the_tags( $post->ID );
+    $hashtags   = '';
+    if ( $tags && ! is_wp_error( $tags ) ) {
+        $hash_parts = array();
+        foreach ( $tags as $tag ) {
+            // Convert tag slug to CamelCase hashtag (e.g. "my-tag" → "#MyTag").
+            $word  = str_replace( array( '-', '_', ' ' ), ' ', $tag->slug );
+            $camel = str_replace( ' ', '', ucwords( $word ) );
+            $hash_parts[] = '#' . $camel;
+        }
+        if ( $hash_parts ) {
+            $hashtags = "\n\n" . implode( ' ', $hash_parts );
+        }
+    }
+
+    // Truncate commentary so the full text (commentary + hashtags) fits in 3000 chars.
+    $max_commentary = 3000 - strlen( $hashtags );
+    if ( strlen( $commentary ) > $max_commentary ) {
+        $commentary = mb_substr( $commentary, 0, $max_commentary - 1 ) . '…';
+    }
+    $commentary .= $hashtags;
 
     $post_url = get_permalink( $post->ID );
 
