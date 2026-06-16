@@ -203,6 +203,9 @@ The plugin logs the error and shows it in the post editor sidebar after saving. 
 
 == Upgrade Notice ==
 
+= 3.0.2 =
+Maintenance release: restores the plugin icon/banner and corrects listing metadata. No functional changes.
+
 = 3.0.1 =
 Compatibility with WordPress 7.0 and PHP 8.3, plus clearer documentation including the content calendar. All existing portal configurations are preserved.
 
