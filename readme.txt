@@ -103,6 +103,35 @@ The plugin uses a shared relay server out of the box — no setup needed for Lin
 2. Scroll to **Application Passwords** and create a new one.
 3. Enter the username and generated password in the plugin settings, or use the one-click button.
 
+== External Services ==
+
+This plugin connects to external services to forward your posts. It only contacts them when you connect an account or publish/forward a post — never in the background without your action.
+
+**1. OAuth Relay Server (default: post-forwarder-relay.sylwesterulatowski.workers.dev)**
+
+To keep social API credentials secure, LinkedIn and X (Twitter) OAuth flows are brokered by a relay server (an open-source Cloudflare Worker). When you click "Connect with LinkedIn" or "Connect with X", the plugin redirects you to the relay, which completes the OAuth handshake and hands the resulting access token back to your site through a one-time, short-lived token exchange.
+
+* Data sent: your WordPress admin return URL, a portal key, a WordPress security nonce, and — for X — your own app Client ID and Client Secret if you supplied them.
+* Data received: the OAuth access token, refresh token, and basic account identifiers (e.g. LinkedIn person URN, X username).
+* The relay stores token payloads only transiently (a 60-second TTL) for the round-trip and does not retain your content.
+* You can self-host the relay and point the plugin at your own instance with the `POST_FORWARDER_RELAY_URL` constant. Source code is available in the plugin's repository.
+
+**2. LinkedIn API (api.linkedin.com)**
+
+When you forward a post to a LinkedIn portal, the plugin sends your post title, excerpt/commentary, post URL, hashtags (derived from your post tags), and featured image directly to LinkedIn using the access token you authorized.
+
+* LinkedIn Terms of Service: https://www.linkedin.com/legal/user-agreement
+* LinkedIn Privacy Policy: https://www.linkedin.com/legal/privacy-policy
+
+**3. X / Twitter API (api.twitter.com)**
+
+When you forward a post to an X portal, the plugin sends your post title and URL (and, on paid API tiers, the featured image) to X using the access token you authorized.
+
+* X Terms of Service: https://twitter.com/en/tos
+* X Privacy Policy: https://twitter.com/en/privacy
+
+WordPress-to-WordPress forwarding contacts only the destination WordPress site you configure (via its REST API) and uses no third-party service.
+
 == Frequently Asked Questions ==
 
 = Does LinkedIn need any setup? =
