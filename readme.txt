@@ -1,6 +1,6 @@
 === Post Forwarder ===
-Contributors: sylwesterulatowski
-Tags: post, forward, sync, wordpress, linkedin, twitter, x, social media, syndication, schedule
+Contributors: sylwester1213
+Tags: forward, syndication, linkedin, twitter, schedule
 Requires at least: 5.6
 Tested up to: 7.0
 Requires PHP: 7.4
