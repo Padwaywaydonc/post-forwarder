@@ -1014,13 +1014,6 @@ function post_forwarder_settings_page() {
                     ? '<button type="button" class="button save-and-connect-x" style="background:#000;border-color:#000;color:#fff;">&#10132; <?php echo esc_js( __( 'Save & Connect with X', 'post-forwarder' ) ); ?></button>'
                     : '<span style="color:#666;"><?php echo esc_js( __( 'X connection requires the relay. Configure POST_FORWARDER_RELAY_URL first.', 'post-forwarder' ) ); ?></span>'
                 ) + '</td></tr>' +
-                '<tr class="fields-meta" style="display:none;"><th><?php echo esc_js( __( 'Post to Facebook', 'post-forwarder' ) ); ?></th><td><label><input type="checkbox" name="portals[' + n + '][post_to_facebook]" value="1" checked> <?php echo esc_js( __( 'Post to Facebook Page', 'post-forwarder' ) ); ?></label></td></tr>' +
-                '<tr class="fields-meta" style="display:none;"><th><?php echo esc_js( __( 'Post to Instagram', 'post-forwarder' ) ); ?></th><td><label><input type="checkbox" name="portals[' + n + '][post_to_instagram]" value="1" checked> <?php echo esc_js( __( 'Post to Instagram', 'post-forwarder' ) ); ?></label></td></tr>' +
-                '<tr class="fields-meta" style="display:none;"><th><?php echo esc_js( __( 'Connection Status', 'post-forwarder' ) ); ?></th><td>' +
-                ( relayMode
-                    ? '<button type="button" class="button save-and-connect-meta" style="background:#1877f2;border-color:#1877f2;color:#fff;">&#10132; <?php echo esc_js( __( 'Save & Connect with Meta', 'post-forwarder' ) ); ?></button>'
-                    : '<span style="color:#666;"><?php echo esc_js( __( 'Meta connection requires the relay.', 'post-forwarder' ) ); ?></span>'
-                ) + '</td></tr>' +
                 '</table>' +
                 '<button type="button" class="button test-connection" style="margin-right: 8px;"><?php echo esc_js( __( 'Test Connection', 'post-forwarder' ) ); ?></button>' +
                 '<span class="connection-result" style="font-weight: 600;"></span>' +
