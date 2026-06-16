@@ -608,24 +608,6 @@ function post_forwarder_settings_page() {
                                     <?php endif; ?>
                                 </td>
                             </tr>
-                            <tr class="fields-meta" style="display:none;">
-                                <th><?php esc_html_e( 'Post to Facebook', 'post-forwarder' ); ?></th>
-                                <td><label><input type="checkbox" name="portals[0][post_to_facebook]" value="1" checked> <?php esc_html_e( 'Post to Facebook Page', 'post-forwarder' ); ?></label></td>
-                            </tr>
-                            <tr class="fields-meta" style="display:none;">
-                                <th><?php esc_html_e( 'Post to Instagram', 'post-forwarder' ); ?></th>
-                                <td><label><input type="checkbox" name="portals[0][post_to_instagram]" value="1" checked> <?php esc_html_e( 'Post to Instagram (requires Professional account linked to Page)', 'post-forwarder' ); ?></label></td>
-                            </tr>
-                            <tr class="fields-meta" style="display:none;">
-                                <th><?php esc_html_e( 'Connection Status', 'post-forwarder' ); ?></th>
-                                <td>
-                                    <?php if ( post_forwarder_relay_url() ) : ?>
-                                        <button type="button" class="button save-and-connect-meta" style="background:#1877f2;border-color:#1877f2;color:#fff;">&#10132; <?php esc_html_e( 'Save & Connect with Meta', 'post-forwarder' ); ?></button>
-                                    <?php else : ?>
-                                        <span style="color:#666;"><?php esc_html_e( 'Meta connection requires the relay.', 'post-forwarder' ); ?></span>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
                         </table>
                         <button type="button" class="button test-connection" style="margin-right: 8px;"><?php esc_html_e( 'Test Connection', 'post-forwarder' ); ?></button>
                         <span class="connection-result" style="font-weight: 600;"></span>
