@@ -646,7 +646,6 @@ function post_forwarder_ajax_add_channel() {
     $platform_colors = array(
         'linkedin'  => array( 'bg' => '#0a66c2', 'label' => 'in' ),
         'x'         => array( 'bg' => '#000000', 'label' => 'X' ),
-        'meta'      => array( 'bg' => '#1877f2', 'label' => 'FB' ),
         'wordpress' => array( 'bg' => '#3858e9', 'label' => 'W' ),
     );
     $color     = $platform_colors[ $type ]['bg'] ?? '#555';
