@@ -661,18 +661,6 @@ function post_forwarder_settings_page() {
                             $x_oauth_url = '';
                         }
 
-                        $is_meta           = ( 'meta' === $mapping_type );
-                        $is_meta_connected = $is_meta
-                            && ! empty( $mapping['access_token'] )
-                            && ! empty( $mapping['page_id'] );
-                        $meta_oauth_url    = ( $is_meta && $relay_url_val )
-                            ? $relay_url_val . '/meta/start?' . http_build_query( array(
-                                'return_url' => admin_url( 'admin.php?page=post-forwarder-settings' ),
-                                'portal_key' => $key,
-                                'wp_nonce'   => wp_create_nonce( 'meta_oauth_' . $key ),
-                            ) )
-                            : '';
-
                         $wp_button_connected = ( 'wordpress' === $mapping_type )
                             && ! empty( $mapping['user'] )
                             && ! empty( $mapping['password'] )
