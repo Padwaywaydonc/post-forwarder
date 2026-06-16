@@ -176,9 +176,9 @@ Yes for WordPress portals. LinkedIn and X always receive a link-post with excerp
 
 == Screenshots ==
 
-1. Settings page — LinkedIn, X, and WordPress portals with one-click OAuth connect buttons
-2. Post editor sidebar — select destinations and see forwarding results per portal
-3. LinkedIn post with featured image thumbnail and auto-generated hashtags from post tags
+1. Connection settings — connect LinkedIn, X (Twitter), and WordPress destinations with one-click OAuth
+2. Post editor — choose which destinations each post is forwarded to when you publish
+3. Content calendar — schedule and review posts across all connected channels
 
 == Changelog ==
 
