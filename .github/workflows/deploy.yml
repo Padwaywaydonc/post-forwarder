@@ -1,0 +1,43 @@
+name: Deploy to WordPress.org
+
+# Fires when you publish a GitHub Release (which creates and pushes a tag
+# like "v3.0.0"). The action then deploys this code to the WordPress.org
+# SVN repo and tags the release there automatically.
+#
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   SVN_USERNAME — your WordPress.org username (sylwester1213)
+#   SVN_PASSWORD — your WordPress.org account password
+#
+# The tag name should match the plugin version, e.g. tag "v3.0.0" → SLUG 3.0.0.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  deploy:
+    name: Deploy to WordPress.org
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: WordPress Plugin Deploy
+        id: deploy
+        uses: 10up/action-wordpress-plugin-deploy@stable
+        with:
+          generate-zip: true
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+          SLUG: post-forwarder
+          # The tag pushed is "vX.Y.Z"; strip the leading "v" for the SVN tag.
+          VERSION: ${{ github.ref_name }}
+
+      - name: Upload release ZIP as build artifact
+        if: steps.deploy.outputs.zip-path != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: post-forwarder
+          path: ${{ steps.deploy.outputs.zip-path }}
