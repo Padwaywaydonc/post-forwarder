@@ -801,7 +801,7 @@ function post_forwarder_settings_page() {
                                         <?php endif; ?>
                                     </td>
                                 </tr>
-                                <?php $show_manual = ( ! $is_linkedin && ! $is_x && ! $is_meta && $wp_manual_has_data ) ? '' : 'style="display:none;"'; ?>
+                                <?php $show_manual = ( ! $is_linkedin && ! $is_x && $wp_manual_has_data ) ? '' : 'style="display:none;"'; ?>
                                 <tr class="fields-wordpress wp-manual-fields" <?php echo $show_manual; ?>>
                                     <th><?php esc_html_e( 'Username / User ID', 'post-forwarder' ); ?></th>
                                     <td><input type="text" name="portals[<?php echo esc_attr($i); ?>][user]"
