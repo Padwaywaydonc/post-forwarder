@@ -484,7 +484,6 @@ function post_forwarder_settings_page() {
         <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
         <?php echo wp_kses_post($linkedin_oauth_notice); ?>
         <?php echo wp_kses_post($x_oauth_notice); ?>
-        <?php echo wp_kses_post( $meta_oauth_notice ); ?>
         <?php echo wp_kses_post( $wp_auth_notice ); ?>
         <form method="post" action="options.php">
             <?php settings_fields('post_forwarding'); ?>
