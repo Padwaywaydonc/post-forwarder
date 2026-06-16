@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants
-define( 'POST_FORWARDER_VERSION', '2.1.0' );
+define( 'POST_FORWARDER_VERSION', '3.0.0' );
 define( 'POST_FORWARDER_DIR', plugin_dir_path( __FILE__ ) );
 define( 'POST_FORWARDER_URL', plugin_dir_url( __FILE__ ) );
 
