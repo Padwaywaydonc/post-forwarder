@@ -162,6 +162,10 @@ The plugin logs the error and shows it in the post editor sidebar after saving. 
 
 == Changelog ==
 
+= 3.0.2 =
+* Restored the plugin icon and banner on the WordPress.org listing
+* Corrected listing metadata (contributor username and tags)
+
 = 3.0.1 =
 * Compatibility with WordPress 7.0 and PHP 8.3
 * Documented the built-in content calendar for scheduling posts
