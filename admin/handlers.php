@@ -592,9 +592,6 @@ function post_forwarder_ajax_add_channel() {
         case 'x':
             $mappings[ $key ] = array( 'type' => 'x', 'name' => $name );
             break;
-        case 'meta':
-            $mappings[ $key ] = array( 'type' => 'meta', 'name' => $name, 'post_to_facebook' => true, 'post_to_instagram' => true );
-            break;
         default:
             $mappings[ $key ] = array( 'type' => 'wordpress', 'name' => $name, 'url' => $url, 'user' => $user, 'password' => $pass );
     }
