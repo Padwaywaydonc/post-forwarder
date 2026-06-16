@@ -1,19 +1,20 @@
 name: Deploy to WordPress.org
 
-# Fires when you publish a GitHub Release (which creates and pushes a tag
-# like "v3.0.0"). The action then deploys this code to the WordPress.org
-# SVN repo and tags the release there automatically.
+# Fires when you publish a GitHub Release whose tag is a plain version
+# number like "3.0.0" (NOT "v3.0.0"). The tag must match the plugin's
+# `Stable tag:` in readme.txt and `Version:` in post-forwarder.php.
+#
+# The action deploys this code to the WordPress.org SVN repo, copies it to
+# tags/<version>, and updates trunk — fully replacing the manual SVN steps.
 #
 # Required repository secrets (Settings → Secrets and variables → Actions):
 #   SVN_USERNAME — your WordPress.org username (sylwester1213)
 #   SVN_PASSWORD — your WordPress.org account password
-#
-# The tag name should match the plugin version, e.g. tag "v3.0.0" → SLUG 3.0.0.
 
 on:
   push:
     tags:
-      - 'v*'
+      - '[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
   deploy:
@@ -32,8 +33,6 @@ jobs:
           SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
           SLUG: post-forwarder
-          # The tag pushed is "vX.Y.Z"; strip the leading "v" for the SVN tag.
-          VERSION: ${{ github.ref_name }}
 
       - name: Upload release ZIP as build artifact
         if: steps.deploy.outputs.zip-path != ''
