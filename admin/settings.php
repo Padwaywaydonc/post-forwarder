@@ -714,25 +714,6 @@ function post_forwarder_settings_page() {
                                     ? '<a href="' . esc_url( $x_oauth_url ) . '" class="button button-small" style="background:#000;border-color:#000;color:#fff;">&#10132; ' . esc_html__( 'Connect', 'post-forwarder' ) . '</a>'
                                     : '';
                             }
-                        } elseif ( $is_meta ) {
-                            $summary_badge = '<span style="background:#1877f2;color:#fff;font-size:11px;padding:2px 8px;border-radius:3px;flex-shrink:0;">FB</span>';
-                            if ( $is_meta_connected ) {
-                                $summary_status = '<span style="color:#00a32a;font-weight:600;">&#10003; Connected</span>';
-                                if ( ! empty( $mapping['page_name'] ) ) {
-                                    $summary_status .= ' <span style="color:#666;font-size:12px;">' . esc_html( $mapping['page_name'] ) . '</span>';
-                                }
-                                if ( ! empty( $mapping['instagram_account_id'] ) ) {
-                                    $summary_status .= ' <span style="color:#999;font-size:11px;margin-left:4px;">· Instagram linked</span>';
-                                }
-                                $summary_action = $meta_oauth_url
-                                    ? '<a href="' . esc_url( $meta_oauth_url ) . '" class="button button-secondary button-small">' . esc_html__( 'Reconnect', 'post-forwarder' ) . '</a>'
-                                    : '';
-                            } else {
-                                $summary_status = '<span style="color:#999;">' . esc_html__( 'Not connected', 'post-forwarder' ) . '</span>';
-                                $summary_action = $meta_oauth_url
-                                    ? '<a href="' . esc_url( $meta_oauth_url ) . '" class="button button-small" style="background:#1877f2;border-color:#1877f2;color:#fff;">&#10132; ' . esc_html__( 'Connect', 'post-forwarder' ) . '</a>'
-                                    : '';
-                            }
                         } else {
                             $summary_badge = '<span style="background:#3858e9;color:#fff;font-size:11px;padding:2px 8px;border-radius:3px;flex-shrink:0;">WP</span>';
                             if ( $wp_button_connected || $wp_manual_has_data ) {
