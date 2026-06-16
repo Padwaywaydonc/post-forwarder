@@ -1,0 +1,23 @@
+# Files and directories that should NOT be deployed to the WordPress.org
+# plugin (trunk). The 10up deploy action respects this list.
+
+.git
+.github
+.gitignore
+.gitattributes
+.distignore
+.wordpress-org
+.DS_Store
+desktop.ini
+node_modules
+package.json
+package-lock.json
+composer.json
+composer.lock
+phpcs.xml
+phpcs.xml.dist
+phpunit.xml
+phpunit.xml.dist
+tests
+.editorconfig
+README.md
