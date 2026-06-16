@@ -1052,15 +1052,6 @@ function post_forwarder_settings_page() {
             $row.closest('form').find('input[name="submit_portals"]').click();
         });
 
-        $(document).on('click', '.save-and-connect-meta', function() {
-            var $row = $(this).closest('.portal-row');
-            var key  = pfGetPortalKey($row);
-            var name = $.trim($row.find('input[name$="[name]"]').val());
-            if (!name) { alert('<?php echo esc_js( __( 'Please enter an Account Name first.', 'post-forwarder' ) ); ?>'); return; }
-            $('input[name="pending_meta_connect"]').val(key || name);
-            $row.closest('form').find('input[name="submit_portals"]').click();
-        });
-
         $(document).on('click', '.save-and-connect-wp', function() {
             var $row = $(this).closest('.portal-row');
             var key  = pfGetPortalKey($row);
