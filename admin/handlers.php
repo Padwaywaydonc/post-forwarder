@@ -566,7 +566,7 @@ function post_forwarder_ajax_add_channel() {
         wp_send_json_error( array( 'message' => __( 'Channel name is required.', 'post-forwarder' ) ) );
     }
 
-    $allowed_types = array( 'linkedin', 'x', 'meta', 'wordpress' );
+    $allowed_types = array( 'linkedin', 'x', 'wordpress' );
     if ( ! in_array( $type, $allowed_types, true ) ) {
         $type = 'wordpress';
     }
