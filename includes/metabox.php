@@ -36,13 +36,6 @@ function post_forwarder_meta_box_callback($post) {
                 if (!$is_connected) {
                     $display_name .= ' <span style="color:#cc0000;font-size:11px;">' . esc_html__('(not connected)', 'post-forwarder') . '</span>';
                 }
-            } elseif ( $account_type === 'meta' ) {
-                $is_connected = ! empty( $mapping['access_token'] ) && ! empty( $mapping['page_id'] );
-                $badge        = '<span style="background:#1877f2;color:#fff;font-size:10px;padding:1px 5px;border-radius:3px;margin-left:5px;">META</span>';
-                $display_name = esc_html( $portal_name ) . $badge;
-                if ( ! $is_connected ) {
-                    $display_name .= ' <span style="color:#cc0000;font-size:11px;">' . esc_html__( '(not connected)', 'post-forwarder' ) . '</span>';
-                }
             } else {
                 $wp_connected = ! empty( $mapping['user'] ) && ! empty( $mapping['password'] );
                 $badge        = '<span style="background:#3858e9;color:#fff;font-size:10px;padding:1px 5px;border-radius:3px;margin-left:5px;">WP</span>';
