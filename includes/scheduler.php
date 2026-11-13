@@ -140,6 +140,84 @@ function post_forwarder_execute_schedule() {
 }
 
 /**
+ * Create a calendar schedule item. Shared by the calendar REST endpoint and the
+ * Abilities API so both validate and store items the same way.
+ *
+ * @param array $args {
+ *     @type int    $post_id      Existing post to forward (0 for a calendar-only item).
+ *     @type string $title        Title (defaults to the post's title).
+ *     @type string $content      Content for calendar-only items.
+ *     @type string $excerpt      Excerpt (defaults to the post's excerpt).
+ *     @type string $image_url    Image URL (defaults to the post's featured image).
+ *     @type array  $channel_keys Portal keys to forward to. Required.
+ *     @type string $scheduled_at Date/time; without a timezone it is read as UTC. Required.
+ * }
+ * @return array|WP_Error The stored row, or an error.
+ */
+function post_forwarder_create_schedule_item( array $args ) {
+    global $wpdb;
+    $table        = $wpdb->prefix . 'pf_schedule';
+    $post_id      = (int) ( $args['post_id'] ?? 0 );
+    $title        = sanitize_text_field( $args['title'] ?? '' );
+    $content      = wp_kses_post( $args['content'] ?? '' );
+    $excerpt      = sanitize_text_field( $args['excerpt'] ?? '' );
+    $image_url    = esc_url_raw( $args['image_url'] ?? '' );
+    $channel_keys = array_values( array_map( 'sanitize_key', (array) ( $args['channel_keys'] ?? array() ) ) );
+    $scheduled_at = sanitize_text_field( $args['scheduled_at'] ?? '' );
+
+    if ( ! $scheduled_at ) {
+        return new WP_Error( 'missing_date', 'scheduled_at is required', array( 'status' => 400 ) );
+    }
+    $timestamp = strtotime( $scheduled_at );
+    if ( false === $timestamp ) {
+        return new WP_Error( 'invalid_date', 'scheduled_at is not a valid date/time', array( 'status' => 400 ) );
+    }
+    if ( empty( $channel_keys ) ) {
+        return new WP_Error( 'missing_channels', 'At least one channel is required', array( 'status' => 400 ) );
+    }
+
+    // If linking an existing post, fill title/excerpt/image from it.
+    if ( $post_id ) {
+        $p = get_post( $post_id );
+        if ( ! $p ) {
+            return new WP_Error( 'invalid_post', 'Post not found', array( 'status' => 404 ) );
+        }
+        $title   = $title ?: $p->post_title;
+        $excerpt = $excerpt ?: $p->post_excerpt;
+        if ( ! $image_url ) {
+            $tid = get_post_thumbnail_id( $post_id );
+            if ( $tid ) {
+                $src       = wp_get_attachment_image_src( $tid, 'medium' );
+                $image_url = $src ? $src[0] : '';
+            }
+        }
+    }
+
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+    $wpdb->insert( $table, array(
+        'post_id'      => $post_id ?: null,
+        'title'        => $title,
+        'content'      => $content,
+        'excerpt'      => $excerpt,
+        'image_url'    => $image_url,
+        'channel_keys' => wp_json_encode( $channel_keys ),
+        'scheduled_at' => gmdate( 'Y-m-d H:i:s', $timestamp ),
+        'status'       => 'pending',
+        'result'       => '{}',
+        'created_at'   => current_time( 'mysql' ),
+    ) );
+
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+    $row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $wpdb->insert_id ), ARRAY_A );
+    if ( ! $row ) {
+        return new WP_Error( 'insert_failed', 'Could not save the schedule item', array( 'status' => 500 ) );
+    }
+    $row['channel_keys'] = json_decode( $row['channel_keys'], true );
+    $row['result']       = json_decode( $row['result'], true );
+    return $row;
+}
+
+/**
  * Forward a post to specific channel keys (used by the schedule cron).
  * Bypasses the save_post hook and duplicate-prevention transients.
  *
