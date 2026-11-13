@@ -104,9 +104,25 @@ function post_forwarder_handle_portals_save() {
                 }
             }
             $allowed_types = array( 'linkedin', 'x', 'wordpress' );
+            // Keep existing Meta portals even when Meta is switched off, so saving never deletes them.
+            if ( post_forwarder_meta_enabled() || ( isset( $existing_mappings_for_save[ $key ]['type'] ) && 'meta' === $existing_mappings_for_save[ $key ]['type'] ) ) {
+                $allowed_types[] = 'meta';
+            }
             $type          = ( isset( $portal['type'] ) && in_array( $portal['type'], $allowed_types, true ) ) ? $portal['type'] : 'wordpress';
 
-            if ( $type === 'linkedin' ) {
+            if ( $type === 'meta' ) {
+                $portals[ $key ] = array(
+                    'type'              => 'meta',
+                    'name'              => sanitize_text_field( $portal['name'] ),
+                    'post_to_facebook'  => ! empty( $portal['post_to_facebook'] ),
+                    'post_to_instagram' => ! empty( $portal['post_to_instagram'] ),
+                );
+                foreach ( array( 'access_token', 'page_id', 'page_name', 'instagram_account_id', 'last_error' ) as $token_field ) {
+                    if ( isset( $existing_mappings_for_save[ $key ][ $token_field ] ) ) {
+                        $portals[ $key ][ $token_field ] = $existing_mappings_for_save[ $key ][ $token_field ];
+                    }
+                }
+            } elseif ( $type === 'linkedin' ) {
                 $portals[ $key ] = array(
                     'type'          => 'linkedin',
                     'name'          => sanitize_text_field( $portal['name'] ),
