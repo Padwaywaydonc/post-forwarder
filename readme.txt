@@ -132,6 +132,10 @@ Yes. Check as many portals as you like in the post editor sidebar — all select
 
 Yes. Open **Post Forwarder -> Calendar** to schedule posts to your connected channels for a future date and time, and to review everything that's queued.
 
+= Can an AI assistant forward or schedule posts for me? =
+
+Yes, on WordPress 6.9 or newer. Post Forwarder registers three abilities (`post-forwarder/list-channels`, `post-forwarder/forward-post` and `post-forwarder/schedule-post`) that AI assistants can call through the WordPress MCP adapter or the WordPress REST API. They only work for administrators.
+
 = Can I forward custom post types? =
 
 Yes for WordPress portals. LinkedIn and X always receive a link-post with excerpt and featured image regardless of post type.
