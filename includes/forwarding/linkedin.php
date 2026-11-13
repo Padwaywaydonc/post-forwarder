@@ -77,7 +77,7 @@ function post_forwarder_forward_to_linkedin($post, $mapping) {
                 'Authorization'             => 'Bearer ' . $mapping['access_token'],
                 'Content-Type'              => 'application/json',
                 'X-Restli-Protocol-Version' => '2.0.0',
-                'LinkedIn-Version'          => '202503',
+                'LinkedIn-Version'          => post_forwarder_linkedin_api_version(),
             );
 
             $init_resp = wp_remote_post(
