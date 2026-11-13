@@ -4,7 +4,7 @@ Tags: forward, syndication, linkedin, twitter, schedule
 Requires at least: 5.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 3.0.3
+Stable tag: 3.0.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -166,6 +166,10 @@ The plugin logs the error and shows it in the post editor sidebar after saving. 
 3. Content calendar — schedule and review posts across all connected channels
 
 == Changelog ==
+
+= 3.0.4 =
+* Fix: accounts with an expired token now stay in the compact list with a red "Token expired" label and their own Reconnect button (previously only other accounts showed a Reconnect button)
+* Fix: X accounts whose short-lived access token renews automatically are no longer shown as "Not connected"
 
 = 3.0.3 =
 * Fix: LinkedIn posting works again — updated to LinkedIn API version 202610 (LinkedIn retired the previous version in March 2026)
