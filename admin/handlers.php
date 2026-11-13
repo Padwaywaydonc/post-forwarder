@@ -305,58 +305,16 @@ function post_forwarder_register_schedule_rest_routes() {
         'methods'             => 'POST',
         'permission_callback' => $perm,
         'callback'            => function ( WP_REST_Request $req ) {
-            global $wpdb;
-            $table        = $wpdb->prefix . 'pf_schedule';
-            $post_id      = (int) ( $req->get_param( 'post_id' ) ?: 0 );
-            $title        = sanitize_text_field( $req->get_param( 'title' ) ?: '' );
-            $content      = wp_kses_post( $req->get_param( 'content' ) ?: '' );
-            $excerpt      = sanitize_text_field( $req->get_param( 'excerpt' ) ?: '' );
-            $image_url    = esc_url_raw( $req->get_param( 'image_url' ) ?: '' );
-            $channel_keys = $req->get_param( 'channel_keys' ) ?: array();
-            $scheduled_at = sanitize_text_field( $req->get_param( 'scheduled_at' ) ?: '' );
-
-            if ( ! $scheduled_at ) {
-                return new WP_Error( 'missing_date', 'scheduled_at is required', array( 'status' => 400 ) );
-            }
-            if ( empty( $channel_keys ) ) {
-                return new WP_Error( 'missing_channels', 'At least one channel is required', array( 'status' => 400 ) );
-            }
-
-            // If linking an existing post, fill title/excerpt from it.
-            if ( $post_id ) {
-                $p = get_post( $post_id );
-                if ( $p ) {
-                    $title   = $title ?: $p->post_title;
-                    $excerpt = $excerpt ?: $p->post_excerpt;
-                    if ( ! $image_url ) {
-                        $tid = get_post_thumbnail_id( $post_id );
-                        if ( $tid ) {
-                            $src       = wp_get_attachment_image_src( $tid, 'medium' );
-                            $image_url = $src ? $src[0] : '';
-                        }
-                    }
-                }
-            }
-
-            // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-            $wpdb->insert( $table, array(
-                'post_id'      => $post_id ?: null,
-                'title'        => $title,
-                'content'      => $content,
-                'excerpt'      => $excerpt,
-                'image_url'    => $image_url,
-                'channel_keys' => wp_json_encode( array_values( (array) $channel_keys ) ),
-                'scheduled_at' => gmdate( 'Y-m-d H:i:s', strtotime( $scheduled_at ) ),
-                'status'       => 'pending',
-                'result'       => '{}',
-                'created_at'   => current_time( 'mysql' ),
+            $row = post_forwarder_create_schedule_item( array(
+                'post_id'      => $req->get_param( 'post_id' ),
+                'title'        => $req->get_param( 'title' ),
+                'content'      => $req->get_param( 'content' ),
+                'excerpt'      => $req->get_param( 'excerpt' ),
+                'image_url'    => $req->get_param( 'image_url' ),
+                'channel_keys' => $req->get_param( 'channel_keys' ),
+                'scheduled_at' => $req->get_param( 'scheduled_at' ),
             ) );
-
-            $id  = $wpdb->insert_id;
-            $row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $id ), ARRAY_A );
-            $row['channel_keys'] = json_decode( $row['channel_keys'], true );
-            $row['result']       = json_decode( $row['result'], true );
-            return rest_ensure_response( $row );
+            return is_wp_error( $row ) ? $row : rest_ensure_response( $row );
         },
     ) );
 
