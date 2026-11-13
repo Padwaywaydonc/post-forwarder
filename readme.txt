@@ -65,7 +65,8 @@ Tested with WordPress 7.0 and PHP 8.3.
 **Step 1 — Create an X developer account (one-time)**
 
 1. Go to [developer.x.com](https://developer.x.com) and sign in with your X account.
-2. Click **Sign up** and agree to the terms — your developer account is created instantly.
+2. Click **Sign up** and agree to the terms.
+3. In the Developer Console, add a payment method and buy API credits (posting stops when credits run out).
 
 **Step 2 — Create an app and get credentials**
 
