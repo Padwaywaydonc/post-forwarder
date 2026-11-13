@@ -758,7 +758,7 @@ function post_forwarder_settings_page() {
                         ?>
                         <div class="portal-row" style="border:1px solid #ddd;border-radius:4px;margin-bottom:10px;overflow:hidden;" data-type="<?php echo esc_attr($mapping_type); ?>">
 
-                            <?php if ( $is_portal_connected ) : ?>
+                            <?php if ( $show_summary ) : ?>
                             <div class="portal-summary" style="display:flex;align-items:center;gap:10px;padding:10px 15px;background:#fafafa;cursor:pointer;" title="<?php esc_attr_e( 'Click to expand', 'post-forwarder' ); ?>">
                                 <?php echo $summary_badge; // phpcs:ignore WordPress.Security.EscapeOutput ?>
                                 <strong style="flex-shrink:0;"><?php echo esc_html( $mapping['name'] ); ?></strong>
