@@ -80,7 +80,7 @@ function post_forwarder_register_abilities() {
             'properties' => array(
                 'key'       => array( 'type' => 'string', 'description' => 'Channel key to pass to other abilities.' ),
                 'name'      => array( 'type' => 'string' ),
-                'type'      => array( 'type' => 'string', 'enum' => array( 'wordpress', 'linkedin', 'x' ) ),
+                'type'      => array( 'type' => 'string', 'enum' => array( 'wordpress', 'linkedin', 'x', 'meta' ) ),
                 'connected' => array( 'type' => 'boolean', 'description' => 'False means the account must be reconnected in Post Forwarder settings.' ),
             ),
         ),
