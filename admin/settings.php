@@ -671,6 +671,14 @@ function post_forwarder_settings_page() {
                         // Determine overall connected state and build summary info for the compact header.
                         $is_portal_connected = $is_connected || $is_x_connected || $wp_button_connected || $wp_manual_has_data;
 
+                        // Accounts that were connected but can no longer post (token expired)
+                        // keep the compact header, with a red label and their own Reconnect button,
+                        // so users don't click another account's Reconnect by mistake.
+                        $li_expired   = $is_linkedin && ! empty( $mapping['access_token'] ) && ! $is_connected;
+                        $x_expired    = $is_x && ! empty( $mapping['access_token'] ) && ! $is_x_connected;
+                        $show_summary = $is_portal_connected || $li_expired || $x_expired;
+                        $expired_label = '<span style="color:#cc0000;font-weight:600;">&#9888; ' . esc_html__( 'Token expired — reconnect to keep posting', 'post-forwarder' ) . '</span>';
+
                         if ( $is_linkedin ) {
                             $summary_badge = '<span style="background:#0a66c2;color:#fff;font-size:11px;padding:2px 8px;border-radius:3px;flex-shrink:0;">LI</span>';
                             if ( $is_connected ) {
