@@ -65,6 +65,37 @@ function post_forwarder_linkedin_api_version() {
 }
 
 /**
+ * Meta Graph API version used for Facebook and Instagram (e.g. v26.0).
+ *
+ * Meta supports each Graph API version for about two years. Override with the
+ * POST_FORWARDER_META_GRAPH_VERSION constant or the
+ * 'post_forwarder_meta_graph_version' filter.
+ *
+ * @return string
+ */
+function post_forwarder_meta_graph_version() {
+    $version = ( defined( 'POST_FORWARDER_META_GRAPH_VERSION' ) && POST_FORWARDER_META_GRAPH_VERSION )
+        ? (string) POST_FORWARDER_META_GRAPH_VERSION
+        : 'v26.0';
+    return (string) apply_filters( 'post_forwarder_meta_graph_version', $version );
+}
+
+/**
+ * Whether Facebook/Instagram (Meta) portals are offered in the UI.
+ *
+ * Off by default until the shared Meta app passes Meta's App Review; enable with
+ * define( 'POST_FORWARDER_ENABLE_META', true ); in wp-config.php or the
+ * 'post_forwarder_meta_enabled' filter. Only accounts with a role on the Meta app
+ * can connect before the app is approved.
+ *
+ * @return bool
+ */
+function post_forwarder_meta_enabled() {
+    $enabled = defined( 'POST_FORWARDER_ENABLE_META' ) && POST_FORWARDER_ENABLE_META;
+    return (bool) apply_filters( 'post_forwarder_meta_enabled', $enabled );
+}
+
+/**
  * Whether an X portal can renew its short-lived access token on its own
  * (it has a refresh token that has not expired yet).
  *
