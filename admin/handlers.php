@@ -614,6 +614,8 @@ function post_forwarder_ajax_add_channel() {
             $x_ajax_args['client_secret'] = $mappings[ $key ]['client_secret'];
         }
         $oauth_url = $relay . '/x/start?' . http_build_query( $x_ajax_args );
+    } elseif ( 'meta' === $type && $relay ) {
+        $oauth_url = post_forwarder_meta_oauth_url( $key );
     } elseif ( 'wordpress' === $type && $url && ! $user ) {
         // App Password flow: redirect to target site's authorize page.
         $nonce       = wp_create_nonce( 'wp_auth_' . $key );
