@@ -18,7 +18,7 @@ Post Forwarder lets you syndicate content from one WordPress site to any combina
 
 * **WordPress sites** — forwards via the REST API with taxonomy mapping, featured image upload, ACF field support, and duplicate prevention. One-click authorization using WordPress Application Passwords, or enter credentials manually.
 * **LinkedIn** — posts as a link-share article card with your excerpt, featured image thumbnail, and hashtags auto-generated from your WordPress post tags. Supports personal profiles and organisation pages. One-click connect — no configuration required.
-* **X (Twitter)** — posts the title and post URL as a tweet; the featured image attaches directly on paid API tiers or appears as a link preview card. Connect with your own free X developer app.
+* **X (Twitter)** — posts the title and post URL as a tweet; the featured image attaches directly on paid API tiers or appears as a link preview card. Connect with your own X developer app (X bills per post).
 
 **Plan ahead with the content calendar**
 
