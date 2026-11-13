@@ -213,6 +213,9 @@ The plugin logs the error and shows it in the post editor sidebar after saving. 
 
 == Upgrade Notice ==
 
+= 3.0.3 =
+Important: fixes LinkedIn posting, which stopped working after LinkedIn retired its old API version. Reconnect LinkedIn if your token has expired.
+
 = 3.0.2 =
 Maintenance release: restores the plugin icon/banner and corrects listing metadata. No functional changes.
 
