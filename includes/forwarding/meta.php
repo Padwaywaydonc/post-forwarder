@@ -188,8 +188,13 @@ function post_forwarder_forward_to_instagram( $post, $mapping, $fallback_image_u
         return array( 'success' => false, 'message' => __( 'Publish step failed — check debug log.', 'post-forwarder' ) );
     }
 
+    $ig_pub_data = json_decode( wp_remote_retrieve_body( $ig_pub_resp ), true );
     post_forwarder_log_error( 'Instagram post succeeded.' );
-    return array( 'success' => true, 'message' => __( 'Posted successfully.', 'post-forwarder' ) );
+    return array(
+        'success' => true,
+        'message' => __( 'Posted successfully.', 'post-forwarder' ),
+        'post_id' => is_array( $ig_pub_data ) && ! empty( $ig_pub_data['id'] ) ? (string) $ig_pub_data['id'] : '',
+    );
 }
 
 // Meta (Facebook + Instagram) combined — kept for backward compatibility with existing portals.
