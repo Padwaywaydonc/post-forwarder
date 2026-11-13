@@ -588,7 +588,7 @@ function post_forwarder_settings_page() {
                                 <th><?php esc_html_e( 'Client ID', 'post-forwarder' ); ?></th>
                                 <td>
                                     <input type="text" name="portals[0][client_id]" placeholder="<?php esc_attr_e( 'X App Client ID', 'post-forwarder' ); ?>" style="width: 300px;" />
-                                    <p class="description"><?php esc_html_e( 'Your X (Twitter) developer app Client ID. Required to use your own API quota.', 'post-forwarder' ); ?></p>
+                                    <p class="description"><?php esc_html_e( 'Your X (Twitter) developer app Client ID. X bills your developer account per post (pay-per-use); posts that include a link cost more than plain posts. Check current rates in the X Developer Console.', 'post-forwarder' ); ?></p>
                                 </td>
                             </tr>
                             <tr class="fields-x" style="display:none;">
@@ -877,7 +877,7 @@ function post_forwarder_settings_page() {
                                     <th><?php esc_html_e( 'Client ID', 'post-forwarder' ); ?></th>
                                     <td>
                                         <input type="text" name="portals[<?php echo esc_attr( $i ); ?>][client_id]" value="<?php echo esc_attr( isset( $mapping['client_id'] ) ? $mapping['client_id'] : '' ); ?>" style="width: 300px;" />
-                                        <p class="description"><?php esc_html_e( 'Your X (Twitter) developer app Client ID. Required to use your own API quota.', 'post-forwarder' ); ?></p>
+                                        <p class="description"><?php esc_html_e( 'Your X (Twitter) developer app Client ID. X bills your developer account per post (pay-per-use); posts that include a link cost more than plain posts. Check current rates in the X Developer Console.', 'post-forwarder' ); ?></p>
                                     </td>
                                 </tr>
                                 <tr class="fields-x" <?php echo $is_x ? '' : 'style="display:none;"'; ?>>
