@@ -60,7 +60,7 @@ Tested with WordPress 7.0 and PHP 8.3.
 
 = X (Twitter) =
 
-**You need a free X developer account to post tweets.** X limits write access per developer app, so each plugin user connects their own app.
+**You need your own X developer account with API credits to post.** X is pay-per-use: there is no free posting tier for new developers, and X bills your developer account for each post. Each plugin user connects their own app, so costs go straight to your own X account — Post Forwarder never charges anything.
 
 **Step 1 — Create an X developer account (one-time)**
 
