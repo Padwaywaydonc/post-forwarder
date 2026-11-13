@@ -157,6 +157,23 @@ function post_forwarder_forward_to_instagram( $post, $mapping, $fallback_image_u
 
     $ig_creation_id = json_decode( wp_remote_retrieve_body( $ig_container_resp ), true )['id'] ?? '';
 
+    // Instagram processes the image asynchronously; wait until the container is ready.
+    for ( $attempt = 0; $attempt < 10; $attempt++ ) {
+        $status_resp = wp_remote_get( "https://graph.facebook.com/" . post_forwarder_meta_graph_version() . "/{$ig_creation_id}?" . http_build_query( array(
+            'fields'       => 'status_code',
+            'access_token' => $page_token,
+        ) ), array( 'timeout' => 15 ) );
+        $status = is_wp_error( $status_resp ) ? '' : ( json_decode( wp_remote_retrieve_body( $status_resp ), true )['status_code'] ?? '' );
+        if ( 'FINISHED' === $status ) {
+            break;
+        }
+        if ( 'ERROR' === $status || 'EXPIRED' === $status ) {
+            post_forwarder_log_error( 'Instagram container ' . $status . ': ' . wp_remote_retrieve_body( $status_resp ) );
+            return array( 'success' => false, 'message' => __( 'Instagram could not process the image.', 'post-forwarder' ) );
+        }
+        sleep( 2 );
+    }
+
     $ig_pub_resp = wp_remote_post( "https://graph.facebook.com/" . post_forwarder_meta_graph_version() . "/{$ig_id}/media_publish", array(
         'body'    => array(
             'creation_id'  => $ig_creation_id,
