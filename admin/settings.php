@@ -645,9 +645,8 @@ function post_forwarder_settings_page() {
                         }
 
                         $is_x           = ( 'x' === $mapping_type );
-                        $is_x_connected = $is_x
-                            && ! empty( $mapping['access_token'] )
-                            && ( ! isset( $mapping['token_expires'] ) || $mapping['token_expires'] > time() );
+                        $is_x_connected = $is_x && post_forwarder_x_is_connected( $mapping );
+                        $x_can_refresh  = $is_x && post_forwarder_x_can_refresh( $mapping );
                         if ( $is_x && $relay_url_val ) {
                             $x_oauth_args = array(
                                 'return_url' => admin_url( 'admin.php?page=post-forwarder-settings' ),
