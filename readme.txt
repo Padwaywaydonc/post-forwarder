@@ -233,6 +233,9 @@ The plugin logs the error and shows it in the post editor sidebar after saving. 
 
 == Upgrade Notice ==
 
+= 3.1.0 =
+Fixes calendar-scheduled forwards to WordPress sites, adds AI-assistant abilities, and moves X image upload to X's v2 API. Reconnect X once to allow image uploads.
+
 = 3.0.4 =
 Clearer reconnect flow: expired LinkedIn and X accounts now show their own Reconnect button.
 
