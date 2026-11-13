@@ -147,9 +147,13 @@ Yes. The plugin uploads your featured image directly to LinkedIn and attaches it
 
 Every 60 days. The plugin shows the expiry date in portal settings. Reconnect before expiry to avoid forwarding failures.
 
-= Why does X posting fail with a quota error? =
+= Why does X posting fail with a credits or payment error? =
 
-Each developer app has 1,500 tweet writes per month on the free tier. If you see a quota error, wait until next month or upgrade your X API plan. Make sure you entered your own Client ID and Secret in the portal settings.
+X is pay-per-use, so your X developer account needs API credits for each post. Top up credits in the X Developer Console, and make sure you entered your own Client ID and Secret in the portal settings.
+
+= Why does LinkedIn say the API version is no longer accepted? =
+
+LinkedIn retires each API version about a year after release. Update Post Forwarder to the latest version to fix it. Advanced users can temporarily set a newer version with `define( 'POST_FORWARDER_LINKEDIN_VERSION', 'YYYYMM' );` in wp-config.php.
 
 = What happens if a destination is unreachable? =
 
