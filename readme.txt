@@ -94,7 +94,8 @@ Tested with WordPress 7.1 and PHP 8.3.
 **Notes:**
 * Every forwarded post includes your post's link, and X bills link posts at a higher rate than plain text posts. See [X API pricing](https://docs.x.com/x-api/getting-started/pricing) for current rates.
 * X access tokens are long-lived and refreshed automatically before expiry.
-* The featured image usually appears as the link preview card X builds from your page (public sites only).
+* The featured image is attached to the post. If the image can't be uploaded, the post still goes out and X shows the link preview card from your page instead (public sites only).
+* Connected X before version 3.1.0? Reconnect once so the plugin gets permission to upload images.
 
 == Installation ==
 
