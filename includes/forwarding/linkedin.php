@@ -176,6 +176,19 @@ function post_forwarder_forward_to_linkedin($post, $mapping) {
     }
 
     post_forwarder_log_error( 'LinkedIn post failed (HTTP ' . $code . '): ' . $raw_body );
+
+    // 426 = LinkedIn retired the API version this plugin sends.
+    if ( 426 === (int) $code ) {
+        return array(
+            'success' => false,
+            'message' => sprintf(
+                /* translators: %s: LinkedIn API version, e.g. 202610 */
+                __( 'LinkedIn no longer accepts API version %s. Please update Post Forwarder to the latest version.', 'post-forwarder' ),
+                post_forwarder_linkedin_api_version()
+            ),
+        );
+    }
+
     $err_data = json_decode( $raw_body, true );
     $err_msg  = ( is_array( $err_data ) && ! empty( $err_data['message'] ) )
         ? $err_data['message']
