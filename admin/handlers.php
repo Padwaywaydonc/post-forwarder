@@ -212,6 +212,16 @@ function post_forwarder_handle_portals_save() {
         }
     }
 
+    // Save & Connect — Meta (Facebook Page + Instagram).
+    if ( ! empty( $_POST['pending_meta_connect'] ) ) {
+        $meta_connect_key  = sanitize_key( wp_unslash( $_POST['pending_meta_connect'] ) );
+        $meta_relay_target = post_forwarder_relay_url();
+        if ( $meta_relay_target && isset( $portals[ $meta_connect_key ] ) && 'meta' === $portals[ $meta_connect_key ]['type'] ) {
+            wp_redirect( post_forwarder_meta_oauth_url( $meta_connect_key ) );
+            exit;
+        }
+    }
+
     // Save & Connect — WordPress Application Password authorization.
     if ( ! empty( $_POST['pending_wp_connect'] ) ) {
         $wp_connect_key = sanitize_key( wp_unslash( $_POST['pending_wp_connect'] ) );
