@@ -64,7 +64,97 @@ function post_forwarder_forward_post($post_id) {
         return;
     }
 
-    // Get the original post type
+    // Collect taxonomies, meta/ACF fields and the featured image once for all destinations.
+    $prepared           = post_forwarder_prepare_wp_payload( $post );
+    $featured_image_url = $prepared['featured_image_url'];
+
+    $forwarding_successful = false;
+    $successful_portals    = array();
+    $portal_results        = array();
+
+    // Loop through each selected product and send to corresponding portal
+    foreach ($xproducts as $xproduct) {
+        if (!isset($mappings[$xproduct])) {
+            continue;
+        }
+
+        $target      = $mappings[$xproduct];
+        $target_type = isset($target['type']) ? $target['type'] : 'wordpress';
+        $portal_name = isset($target['name']) ? $target['name'] : $xproduct;
+
+        // Route to LinkedIn if this is a LinkedIn account
+        if ($target_type === 'linkedin') {
+            $result = post_forwarder_forward_to_linkedin($post, $target);
+            $portal_results[$xproduct] = array(
+                'name'     => $portal_name,
+                'type'     => 'linkedin',
+                'success'  => $result['success'],
+                'message'  => $result['message'],
+                'post_urn' => isset( $result['post_urn'] ) ? $result['post_urn'] : '',
+            );
+            if ($result['success']) {
+                $forwarding_successful = true;
+                $successful_portals[]  = $xproduct;
+            }
+            continue;
+        }
+
+
+        // Route to X (Twitter) if this is an X account
+        if ( $target_type === 'x' ) {
+            $result = post_forwarder_forward_to_x( $post, $target, $xproduct, $featured_image_url );
+            $portal_results[$xproduct] = array(
+                'name'    => $portal_name,
+                'type'    => 'x',
+                'success' => $result['success'],
+                'message' => $result['message'],
+            );
+            if ( $result['success'] ) {
+                $forwarding_successful = true;
+                $successful_portals[]  = $xproduct;
+            }
+            continue;
+        }
+
+        // WordPress portal forwarding.
+        $result = post_forwarder_forward_to_wordpress( $post, $target, $xproduct, $prepared );
+        $portal_results[$xproduct] = array(
+            'name'    => $portal_name,
+            'type'    => 'wordpress',
+            'success' => $result['success'],
+            'message' => $result['message'],
+        );
+
+        if ($result['success']) {
+            $forwarding_successful = true;
+            $successful_portals[] = $xproduct;
+        }
+    }
+
+    // Set the "recently forwarded" flag ONLY after processing ALL portals
+    if ($forwarding_successful) {
+        set_transient($recent_forward_key, true, 300); // 5 minutes
+    }
+
+    // Store per-portal results for display on the post edit screen after redirect.
+    if ( ! empty( $portal_results ) ) {
+        set_transient( 'pf_forward_results_' . get_current_user_id() . '_' . $post_id, $portal_results, 120 );
+    }
+
+    // Clean up the transients at the end
+    delete_transient($lock_key);
+    delete_transient($processing_key);
+}
+
+/**
+ * Collect what a WordPress-to-WordPress forward needs: taxonomy terms, fallback
+ * tags, flattened post meta (including ACF fields) and the featured image URL.
+ *
+ * @param WP_Post $post Post being forwarded.
+ * @return array{taxonomy_data: array, fallback_tags: array, meta_flattened: array, featured_image_url: ?string}
+ */
+function post_forwarder_prepare_wp_payload( $post ) {
+    $post_id            = $post->ID;
     $original_post_type = $post->post_type;
 
     // Get ALL taxonomies for this post type
@@ -151,107 +241,67 @@ function post_forwarder_forward_post($post_id) {
         }
     }
 
-    $forwarding_successful = false;
-    $successful_portals    = array();
-    $portal_results        = array();
+    return array(
+        'taxonomy_data'      => $taxonomy_data,
+        'fallback_tags'      => $fallback_tags,
+        'meta_flattened'     => $meta_flattened,
+        'featured_image_url' => $featured_image_url,
+    );
+}
 
-    // Loop through each selected product and send to corresponding portal
-    foreach ($xproducts as $xproduct) {
-        if (!isset($mappings[$xproduct])) {
-            continue;
-        }
+/**
+ * Forward one post to one WordPress destination through its REST API.
+ * Used when a post is published, by the calendar scheduler and by the Abilities API.
+ *
+ * @param WP_Post    $post       Post being forwarded.
+ * @param array      $target     WordPress portal mapping (url, user, password, ...).
+ * @param string     $portal_key Portal key, used for logging and duplicate tracking.
+ * @param array|null $prepared   Output of post_forwarder_prepare_wp_payload(), computed if null.
+ * @return array{success: bool, message: string}
+ */
+function post_forwarder_forward_to_wordpress( $post, $target, $portal_key, $prepared = null ) {
+    if ( empty( $target['user'] ) || empty( $target['password'] ) || ( empty( $target['url'] ) && empty( $target['wp_site_url'] ) ) ) {
+        return array( 'success' => false, 'message' => __( 'This WordPress site is not connected.', 'post-forwarder' ) );
+    }
+    if ( null === $prepared ) {
+        $prepared = post_forwarder_prepare_wp_payload( $post );
+    }
+    $options            = get_option( 'post_forwarding_options', array() );
+    $post_id            = $post->ID;
+    $original_post_type = $post->post_type;
+    $taxonomy_data      = $prepared['taxonomy_data'];
+    $fallback_tags      = $prepared['fallback_tags'];
+    $meta_flattened     = $prepared['meta_flattened'];
+    $featured_image_url = $prepared['featured_image_url'];
 
-        $target      = $mappings[$xproduct];
-        $target_type = isset($target['type']) ? $target['type'] : 'wordpress';
-        $portal_name = isset($target['name']) ? $target['name'] : $xproduct;
+    $wp_api_base = ! empty( $target['wp_site_url'] )
+        ? rtrim( $target['wp_site_url'], '/' )
+        : rtrim( $target['url'], '/' );
 
-        // Route to LinkedIn if this is a LinkedIn account
-        if ($target_type === 'linkedin') {
-            $result = post_forwarder_forward_to_linkedin($post, $target);
-            $portal_results[$xproduct] = array(
-                'name'     => $portal_name,
-                'type'     => 'linkedin',
-                'success'  => $result['success'],
-                'message'  => $result['message'],
-                'post_urn' => isset( $result['post_urn'] ) ? $result['post_urn'] : '',
-            );
-            if ($result['success']) {
-                $forwarding_successful = true;
-                $successful_portals[]  = $xproduct;
-            }
-            continue;
-        }
-
-
-        // Route to X (Twitter) if this is an X account
-        if ( $target_type === 'x' ) {
-            $result = post_forwarder_forward_to_x( $post, $target, $xproduct, $featured_image_url );
-            $portal_results[$xproduct] = array(
-                'name'    => $portal_name,
-                'type'    => 'x',
-                'success' => $result['success'],
-                'message' => $result['message'],
-            );
-            if ( $result['success'] ) {
-                $forwarding_successful = true;
-                $successful_portals[]  = $xproduct;
-            }
-            continue;
-        }
-
-        // WordPress portal forwarding.
-        // Use wp_site_url (stored during OAuth connect) for the REST API base — this is the
-        // real WordPress install path, which may differ from the home URL in subdirectory setups.
-        $wp_api_base = ! empty( $target['wp_site_url'] )
-            ? rtrim( $target['wp_site_url'], '/' )
-            : rtrim( $target['url'], '/' );
-
-        if ($original_post_type === 'post') {
-            $api_url = $wp_api_base . '/wp-json/wp/v2/posts';
-        } else {
-            $api_url = $wp_api_base . '/wp-json/wp/v2/' . $original_post_type;
-        }
-
-        post_forwarder_log_error( 'WordPress forward starting: post ' . $post_id . ' → ' . $api_url );
-
-        $auth = base64_encode($target['user'] . ':' . $target['password']);
-
-        // Try with term slugs first (better chance of matching existing terms)
-        $success = post_forwarder_attempt_with_term_slugs($post, $api_url, $auth, $taxonomy_data, $meta_flattened, $options, $original_post_type, $target, $featured_image_url, $xproduct);
-
-        if (!$success) {
-            // If that fails, try with just tags as fallback
-            $success = post_forwarder_attempt_with_fallback_tags($post, $api_url, $auth, $fallback_tags, $meta_flattened, $options, $original_post_type, $target, $featured_image_url, $xproduct);
-        }
-
-        $portal_results[$xproduct] = array(
-            'name'    => $portal_name,
-            'type'    => 'wordpress',
-            'success' => $success,
-            'message' => $success
-                ? sprintf( __( 'Post forwarded to %s', 'post-forwarder' ), wp_parse_url( $target['url'], PHP_URL_HOST ) )
-                : __( 'Forwarding failed — check the debug log for details.', 'post-forwarder' ),
-        );
-
-        if ($success) {
-            $forwarding_successful = true;
-            $successful_portals[] = $xproduct;
-        }
+    if ($original_post_type === 'post') {
+        $api_url = $wp_api_base . '/wp-json/wp/v2/posts';
+    } else {
+        $api_url = $wp_api_base . '/wp-json/wp/v2/' . $original_post_type;
     }
 
-    // Set the "recently forwarded" flag ONLY after processing ALL portals
-    if ($forwarding_successful) {
-        set_transient($recent_forward_key, true, 300); // 5 minutes
+    post_forwarder_log_error( 'WordPress forward starting: post ' . $post_id . ' → ' . $api_url );
+
+    $auth = base64_encode($target['user'] . ':' . $target['password']);
+
+    // Try with term slugs first (better chance of matching existing terms)
+    $success = post_forwarder_attempt_with_term_slugs($post, $api_url, $auth, $taxonomy_data, $meta_flattened, $options, $original_post_type, $target, $featured_image_url, $portal_key);
+
+    if (!$success) {
+        // If that fails, try with just tags as fallback
+        $success = post_forwarder_attempt_with_fallback_tags($post, $api_url, $auth, $fallback_tags, $meta_flattened, $options, $original_post_type, $target, $featured_image_url, $portal_key);
     }
 
-    // Store per-portal results for display on the post edit screen after redirect.
-    if ( ! empty( $portal_results ) ) {
-        set_transient( 'pf_forward_results_' . get_current_user_id() . '_' . $post_id, $portal_results, 120 );
-    }
-
-    // Clean up the transients at the end
-    delete_transient($lock_key);
-    delete_transient($processing_key);
+    return array(
+        'success' => (bool) $success,
+        'message' => $success
+            ? sprintf( __( 'Post forwarded to %s', 'post-forwarder' ), wp_parse_url( ! empty( $target['url'] ) ? $target['url'] : $target['wp_site_url'], PHP_URL_HOST ) )
+            : __( 'Forwarding failed — check the debug log for details.', 'post-forwarder' ),
+    );
 }
 
 // Helper function to upload and set featured image
