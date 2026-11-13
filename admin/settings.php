@@ -714,7 +714,9 @@ function post_forwarder_settings_page() {
                                 if ( ! empty( $mapping['x_username'] ) ) {
                                     $summary_status .= ' <span style="color:#666;font-size:12px;">@' . esc_html( $mapping['x_username'] ) . '</span>';
                                 }
-                                if ( isset( $mapping['token_expires'] ) ) {
+                                // X access tokens last ~2h and renew automatically — only show an
+                                // expiry date when there is no refresh token to renew from.
+                                if ( ! $x_can_refresh && isset( $mapping['token_expires'] ) ) {
                                     $exp_label = $mapping['token_expires'] > time()
                                         ? esc_html( sprintf( __( 'Token expires: %s', 'post-forwarder' ), date_i18n( get_option( 'date_format' ), $mapping['token_expires'] ) ) )
                                         : '<span style="color:#cc0000;">' . esc_html__( 'Token expired', 'post-forwarder' ) . '</span>';
