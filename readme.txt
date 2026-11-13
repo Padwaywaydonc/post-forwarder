@@ -39,6 +39,10 @@ Post Forwarder includes a built-in weekly calendar so you can do more than fire-
 * Supports personal profiles and organisation pages.
 * Token expiry is shown in settings, with a reconnect prompt before it lapses.
 
+**Works with AI assistants**
+
+On WordPress 6.9 and newer, Post Forwarder registers abilities with the WordPress Abilities API: list your channels, forward a published post now, and schedule a post on the calendar. AI assistants such as Claude can use them through the WordPress MCP adapter, so you can ask them to share or schedule a post for you. Only administrators can use these abilities.
+
 **Compatibility**
 
 Tested with WordPress 7.1 and PHP 8.3.
