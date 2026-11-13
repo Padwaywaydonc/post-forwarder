@@ -1,0 +1,66 @@
+name: Plugin health check
+
+# Monthly reminder for things that silently go stale:
+# - LinkedIn retires each API version about 12 months after release
+#   (an expired version broke LinkedIn posting in March 2026).
+# - WordPress.org warns users when "Tested up to" lags behind the latest WordPress.
+# Opens (or updates) a GitHub issue when something needs attention.
+
+on:
+  schedule:
+    - cron: '0 8 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check LinkedIn API version and Tested up to
+        id: check
+        run: |
+          set -euo pipefail
+          problems=""
+
+          # LinkedIn API version (YYYYMM) pinned in includes/helpers.php.
+          li_version=$(grep -oE "'20[0-9]{4}'" includes/helpers.php | head -1 | tr -d "'")
+          li_months=$(( ( $(date -u +%Y) - ${li_version:0:4} ) * 12 + 10#$(date -u +%m) - 10#${li_version:4:2} ))
+          echo "LinkedIn API version: $li_version (${li_months} months old)"
+          if [ "$li_months" -ge 9 ]; then
+            problems+="- **LinkedIn API version \`$li_version\` is ${li_months} months old.** LinkedIn retires versions about 12 months after release (requests then fail with HTTP 426). Update the default in \`post_forwarder_linkedin_api_version()\` (includes/helpers.php) to a current version from https://learn.microsoft.com/en-us/linkedin/marketing/versioning and release."$'\n'
+          fi
+
+          # Tested up to vs latest WordPress (major.minor).
+          tested=$(grep -m1 -E '^Tested up to:' readme.txt | awk '{print $4}')
+          latest=$(curl -fsSL https://api.wordpress.org/core/version-check/1.7/ | jq -r '.offers[0].current' | cut -d. -f1,2)
+          echo "Tested up to: $tested | latest WordPress: $latest"
+          if [ "$(printf '%s\n%s\n' "$tested" "$latest" | sort -V | tail -1)" != "$tested" ]; then
+            problems+="- **Tested up to is $tested but WordPress $latest is out.** Test the plugin on $latest, then bump \`Tested up to\` in readme.txt and post-forwarder.php and release."$'\n'
+          fi
+
+          {
+            echo "problems<<EOF"
+            printf '%s' "$problems"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Open or update the health-check issue
+        if: steps.check.outputs.problems != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROBLEMS: ${{ steps.check.outputs.problems }}
+        run: |
+          set -euo pipefail
+          title="Plugin health check: maintenance needed"
+          body="$(printf 'The monthly health check found:\n\n%s\n_Checked %s by the Plugin health check workflow._' "$PROBLEMS" "$(date -u +%Y-%m-%d)")"
+          existing=$(gh issue list --state open --search "in:title \"$title\"" --json number -q '.[0].number')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body"
+          fi
