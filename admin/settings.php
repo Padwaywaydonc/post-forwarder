@@ -693,6 +693,14 @@ function post_forwarder_settings_page() {
                                     $summary_status .= ' <span style="color:#999;font-size:11px;margin-left:6px;">· ' . $exp_label . '</span>';
                                 }
                                 $summary_action = '<a href="' . esc_url( $oauth_url ) . '" class="button button-secondary button-small">' . esc_html__( 'Reconnect', 'post-forwarder' ) . '</a>';
+                            } elseif ( $li_expired ) {
+                                $summary_status = $expired_label;
+                                if ( ! empty( $mapping['person_urn'] ) ) {
+                                    $summary_status .= ' <span style="color:#666;font-size:12px;">' . esc_html( $mapping['person_urn'] ) . '</span>';
+                                }
+                                $summary_action = $has_credentials
+                                    ? '<a href="' . esc_url( $oauth_url ) . '" class="button button-small" style="background:#0a66c2;border-color:#0a66c2;color:#fff;">&#10132; ' . esc_html__( 'Reconnect LinkedIn', 'post-forwarder' ) . '</a>'
+                                    : '';
                             } else {
                                 $summary_status = '<span style="color:#999;">' . esc_html__( 'Not connected', 'post-forwarder' ) . '</span>';
                                 $summary_action = $has_credentials
