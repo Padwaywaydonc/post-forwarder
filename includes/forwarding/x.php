@@ -4,8 +4,11 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 // X (Twitter) post forwarding
 /**
- * Upload an image to X and return the media_id string, or null on failure.
- * Uses the v1.1 simple-upload endpoint which accepts OAuth 2.0 user-context tokens.
+ * Upload an image to X and return its media ID, or null on failure.
+ *
+ * Uses the X API v2 one-request upload (POST /2/media/upload), which needs the
+ * media.write scope. Connections made before that scope was requested fall back
+ * to the legacy v1.1 endpoint; if both fail the post goes out without an image.
  */
 function post_forwarder_x_upload_media( $image_url, $access_token ) {
     $img = wp_remote_get( $image_url, array( 'timeout' => 30 ) );
@@ -16,7 +19,37 @@ function post_forwarder_x_upload_media( $image_url, $access_token ) {
     if ( empty( $img_body ) ) {
         return null;
     }
-    // X simple-upload: base64-encode the image and post as form data.
+    // X accepts post images up to 5 MB.
+    if ( strlen( $img_body ) > 5 * MB_IN_BYTES ) {
+        post_forwarder_log_error( 'X media upload skipped: image larger than 5 MB.' );
+        return null;
+    }
+
+    // X API v2 single-request upload.
+    $v2 = wp_remote_post(
+        'https://api.x.com/2/media/upload',
+        array(
+            'headers' => array(
+                'Authorization' => 'Bearer ' . $access_token,
+                'Content-Type'  => 'application/json',
+            ),
+            'body'    => wp_json_encode( array(
+                'media'          => base64_encode( $img_body ),
+                'media_category' => 'tweet_image',
+            ) ),
+            'timeout' => 60,
+        )
+    );
+    if ( ! is_wp_error( $v2 ) ) {
+        $code = wp_remote_retrieve_response_code( $v2 );
+        $data = json_decode( wp_remote_retrieve_body( $v2 ), true );
+        if ( $code >= 200 && $code < 300 && ! empty( $data['data']['id'] ) ) {
+            return (string) $data['data']['id'];
+        }
+        post_forwarder_log_error( 'X v2 media upload failed (HTTP ' . $code . '): ' . substr( wp_remote_retrieve_body( $v2 ), 0, 300 ) );
+    }
+
+    // Legacy fallback: base64-encode the image and post as form data.
     $response = wp_remote_post(
         'https://upload.twitter.com/1.1/media/upload.json',
         array(
