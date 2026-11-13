@@ -23,7 +23,7 @@ function post_forwarder_get_channels_for_api() {
     $channels = array();
     foreach ( (array) $mappings as $key => $mapping ) {
         $type = isset( $mapping['type'] ) ? $mapping['type'] : 'wordpress';
-        if ( ! in_array( $type, array( 'wordpress', 'linkedin', 'x' ), true ) ) {
+        if ( ! in_array( $type, array( 'wordpress', 'linkedin', 'x', 'meta' ), true ) ) {
             continue;
         }
         $channels[] = array(
