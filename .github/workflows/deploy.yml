@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: WordPress Plugin Deploy
         id: deploy
@@ -36,7 +36,7 @@ jobs:
 
       - name: Upload release ZIP as build artifact
         if: steps.deploy.outputs.zip-path != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: post-forwarder
           path: ${{ steps.deploy.outputs.zip-path }}
