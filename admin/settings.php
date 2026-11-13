@@ -935,7 +935,9 @@ function post_forwarder_settings_page() {
                                                 <?php echo esc_html( $mapping['last_error'] ); ?>
                                             </p>
                                         <?php endif; ?>
-                                        <?php if ( $is_x && isset( $mapping['token_expires'] ) ) : ?>
+                                        <?php if ( $is_x && $x_can_refresh ) : ?>
+                                            <p class="description"><?php esc_html_e( 'Access renews automatically.', 'post-forwarder' ); ?></p>
+                                        <?php elseif ( $is_x && isset( $mapping['token_expires'] ) ) : ?>
                                             <p class="description">
                                                 <?php if ( $mapping['token_expires'] > time() ) : ?>
                                                     <?php
