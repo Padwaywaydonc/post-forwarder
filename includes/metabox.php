@@ -35,6 +35,13 @@ function post_forwarder_meta_box_callback($post) {
                 if (!$is_connected) {
                     $display_name .= ' <span style="color:#cc0000;font-size:11px;">' . esc_html__('(not connected)', 'post-forwarder') . '</span>';
                 }
+            } elseif ( $account_type === 'meta' ) {
+                $is_connected = ! empty( $mapping['access_token'] ) && ! empty( $mapping['page_id'] );
+                $badge        = '<span style="background:#1877f2;color:#fff;font-size:10px;padding:1px 5px;border-radius:3px;margin-left:5px;">FB</span>';
+                $display_name = esc_html( $portal_name ) . $badge;
+                if ( ! $is_connected ) {
+                    $display_name .= ' <span style="color:#cc0000;font-size:11px;">' . esc_html__( '(not connected)', 'post-forwarder' ) . '</span>';
+                }
             } else {
                 $wp_connected = ! empty( $mapping['user'] ) && ! empty( $mapping['password'] );
                 $badge        = '<span style="background:#3858e9;color:#fff;font-size:10px;padding:1px 5px;border-radius:3px;margin-left:5px;">WP</span>';
@@ -72,8 +79,8 @@ function post_forwarder_meta_box_callback($post) {
         foreach ( $pf_results as $r ) {
             $icon  = $r['success'] ? '✓' : '✗';
             $color = $r['success'] ? '#00a32a' : '#cc0000';
-            $badge_colors = array( 'linkedin' => '#0a66c2', 'x' => '#000', 'wordpress' => '#3858e9' );
-            $badge_labels = array( 'linkedin' => 'LI', 'x' => 'X', 'wordpress' => 'WP' );
+            $badge_colors = array( 'linkedin' => '#0a66c2', 'x' => '#000', 'wordpress' => '#3858e9', 'meta' => '#1877f2' );
+            $badge_labels = array( 'linkedin' => 'LI', 'x' => 'X', 'wordpress' => 'WP', 'meta' => 'FB' );
             $badge = '';
             if ( isset( $r['type'], $badge_colors[ $r['type'] ] ) ) {
                 $badge = '<span style="background:' . esc_attr( $badge_colors[ $r['type'] ] ) . ';color:#fff;font-size:9px;padding:1px 4px;border-radius:2px;margin-left:3px;">' . esc_html( $badge_labels[ $r['type'] ] ) . '</span>';
