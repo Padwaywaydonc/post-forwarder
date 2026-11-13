@@ -262,6 +262,8 @@ function post_forwarder_schedule_forward( $post_id, array $channel_keys, $fallba
             $results[ $key ] = post_forwarder_forward_to_linkedin( $post, $mapping );
         } elseif ( 'x' === $type ) {
             $results[ $key ] = post_forwarder_forward_to_x( $post, $mapping, $key, $featured_image_url );
+        } elseif ( 'meta' === $type ) {
+            $results[ $key ] = post_forwarder_forward_to_meta( $post, $mapping, $featured_image_url );
         } elseif ( 'wordpress' === $type ) {
             // Previously this only reported "Queued" and never sent anything.
             if ( null === $wp_prepared ) {
