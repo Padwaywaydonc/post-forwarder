@@ -218,6 +218,9 @@ The plugin logs the error and shows it in the post editor sidebar after saving. 
 
 == Upgrade Notice ==
 
+= 3.0.4 =
+Clearer reconnect flow: expired LinkedIn and X accounts now show their own Reconnect button.
+
 = 3.0.3 =
 Important: fixes LinkedIn posting, which stopped working after LinkedIn retired its old API version. Reconnect LinkedIn if your token has expired.
 
