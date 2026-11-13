@@ -167,6 +167,11 @@ The plugin logs the error and shows it in the post editor sidebar after saving. 
 
 == Changelog ==
 
+= 3.0.3 =
+* Fix: LinkedIn posting works again — updated to LinkedIn API version 202610 (LinkedIn retired the previous version in March 2026)
+* LinkedIn: clear message when LinkedIn retires an API version, plus a wp-config override
+* X: updated setup notes for X's pay-per-use pricing
+
 = 3.0.2 =
 * Restored the plugin icon and banner on the WordPress.org listing
 * Corrected listing metadata (contributor username and tags)
