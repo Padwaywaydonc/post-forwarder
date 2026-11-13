@@ -725,6 +725,14 @@ function post_forwarder_settings_page() {
                                 $summary_action = $x_oauth_url
                                     ? '<a href="' . esc_url( $x_oauth_url ) . '" class="button button-secondary button-small">' . esc_html__( 'Reconnect', 'post-forwarder' ) . '</a>'
                                     : '';
+                            } elseif ( $x_expired ) {
+                                $summary_status = $expired_label;
+                                if ( ! empty( $mapping['x_username'] ) ) {
+                                    $summary_status .= ' <span style="color:#666;font-size:12px;">@' . esc_html( $mapping['x_username'] ) . '</span>';
+                                }
+                                $summary_action = $x_oauth_url
+                                    ? '<a href="' . esc_url( $x_oauth_url ) . '" class="button button-small" style="background:#000;border-color:#000;color:#fff;">&#10132; ' . esc_html__( 'Reconnect X', 'post-forwarder' ) . '</a>'
+                                    : '';
                             } else {
                                 $summary_status = '<span style="color:#999;">' . esc_html__( 'Not connected', 'post-forwarder' ) . '</span>';
                                 $summary_action = $x_oauth_url
