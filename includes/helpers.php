@@ -131,6 +131,8 @@ function post_forwarder_channel_connected( array $m ) {
                 && ( empty( $m['token_expires'] ) || $m['token_expires'] > time() );
         case 'x':
             return (bool) post_forwarder_relay_url() && post_forwarder_x_is_connected( $m );
+        case 'meta':
+            return ! empty( $m['access_token'] ) && ! empty( $m['page_id'] );
         case 'wordpress':
             return ! empty( $m['user'] ) && ! empty( $m['password'] );
         default:
