@@ -3,7 +3,7 @@
  * Plugin Name: Post Forwarder
  * Plugin URI: https://github.com/Padwaywaydonc/post-forwarder
  * Description: Forwards posts to other WordPress sites via REST API with taxonomy mapping and featured image support.
- * Version: 3.0.4
+ * Version: 3.1.0
  * Author: Sylwester Ulatowski
  * Author email: sylwesterulatowski@gmail.com
  * License: GPL v2 or later
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants
-define( 'POST_FORWARDER_VERSION', '3.0.4' );
+define( 'POST_FORWARDER_VERSION', '3.1.0' );
 define( 'POST_FORWARDER_DIR', plugin_dir_path( __FILE__ ) );
 define( 'POST_FORWARDER_URL', plugin_dir_url( __FILE__ ) );
 
