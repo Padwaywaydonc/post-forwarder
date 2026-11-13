@@ -29,8 +29,7 @@ function post_forwarder_meta_box_callback($post) {
                     $display_name .= ' <span style="color:#cc0000;font-size:11px;">' . esc_html__('(not connected)', 'post-forwarder') . '</span>';
                 }
             } elseif ($account_type === 'x') {
-                $is_connected = !empty($mapping['access_token'])
-                    && (!isset($mapping['token_expires']) || $mapping['token_expires'] > time());
+                $is_connected = post_forwarder_x_is_connected( $mapping );
                 $badge        = '<span style="background:#000;color:#fff;font-size:10px;padding:1px 5px;border-radius:3px;margin-left:5px;">X</span>';
                 $display_name = esc_html($portal_name) . $badge;
                 if (!$is_connected) {
