@@ -116,6 +116,22 @@ function post_forwarder_forward_post($post_id) {
             continue;
         }
 
+        // Route to Meta (Facebook Page + Instagram).
+        if ( $target_type === 'meta' ) {
+            $result = post_forwarder_forward_to_meta( $post, $target, $featured_image_url );
+            $portal_results[$xproduct] = array(
+                'name'    => $portal_name,
+                'type'    => 'meta',
+                'success' => $result['success'],
+                'message' => $result['message'],
+            );
+            if ( $result['success'] ) {
+                $forwarding_successful = true;
+                $successful_portals[]  = $xproduct;
+            }
+            continue;
+        }
+
         // WordPress portal forwarding.
         $result = post_forwarder_forward_to_wordpress( $post, $target, $xproduct, $prepared );
         $portal_results[$xproduct] = array(
