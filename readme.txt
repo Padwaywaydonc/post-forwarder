@@ -88,9 +88,9 @@ Tested with WordPress 7.0 and PHP 8.3.
 4. Authorize the app on X and you are redirected back with a "Connected" badge.
 
 **Notes:**
-* The free tier allows 1,500 tweet writes per month. Each user's app has its own separate quota.
+* Every forwarded post includes your post's link, and X bills link posts at a higher rate than plain text posts. See [X API pricing](https://docs.x.com/x-api/getting-started/pricing) for current rates.
 * X access tokens are long-lived and refreshed automatically before expiry.
-* Featured images on the free tier appear as link preview cards (public sites only), not as direct attachments. The X Basic plan enables direct image upload.
+* The featured image usually appears as the link preview card X builds from your page (public sites only).
 
 == Installation ==
 
