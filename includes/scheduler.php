@@ -171,7 +171,8 @@ function post_forwarder_schedule_forward( $post_id, array $channel_keys, $fallba
         $featured_image_url = $fallback_image_url;
     }
 
-    $results = array();
+    $results     = array();
+    $wp_prepared = null; // Built once, only if a WordPress destination is selected.
     foreach ( $channel_keys as $key ) {
         if ( ! isset( $mappings[ $key ] ) ) {
             continue;
