@@ -64,6 +64,34 @@ function post_forwarder_linkedin_api_version() {
     return (string) apply_filters( 'post_forwarder_linkedin_api_version', $version );
 }
 
+/**
+ * Whether an X portal can renew its short-lived access token on its own
+ * (it has a refresh token that has not expired yet).
+ *
+ * @param array $m Portal mapping.
+ * @return bool
+ */
+function post_forwarder_x_can_refresh( array $m ) {
+    return ! empty( $m['refresh_token'] )
+        && ( empty( $m['refresh_token_expires'] ) || $m['refresh_token_expires'] > time() );
+}
+
+/**
+ * Whether an X portal can post right now. X access tokens last ~2 hours, but
+ * the plugin renews them automatically from the refresh token, so a portal
+ * with a valid refresh token counts as connected even if the access token lapsed.
+ *
+ * @param array $m Portal mapping.
+ * @return bool
+ */
+function post_forwarder_x_is_connected( array $m ) {
+    if ( empty( $m['access_token'] ) ) {
+        return false;
+    }
+    $access_valid = empty( $m['token_expires'] ) || $m['token_expires'] > time();
+    return $access_valid || post_forwarder_x_can_refresh( $m );
+}
+
 function post_forwarder_channel_connected( array $m ) {
     $type = isset( $m['type'] ) ? $m['type'] : 'wordpress';
     switch ( $type ) {
@@ -71,9 +99,7 @@ function post_forwarder_channel_connected( array $m ) {
             return ! empty( $m['access_token'] )
                 && ( empty( $m['token_expires'] ) || $m['token_expires'] > time() );
         case 'x':
-            return (bool) post_forwarder_relay_url()
-                && ! empty( $m['access_token'] )
-                && ( empty( $m['token_expires'] ) || $m['token_expires'] > time() );
+            return (bool) post_forwarder_relay_url() && post_forwarder_x_is_connected( $m );
         case 'wordpress':
             return ! empty( $m['user'] ) && ! empty( $m['password'] );
         default:
