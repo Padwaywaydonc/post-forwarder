@@ -184,15 +184,14 @@ function post_forwarder_schedule_forward( $post_id, array $channel_keys, $fallba
         } elseif ( 'x' === $type ) {
             $results[ $key ] = post_forwarder_forward_to_x( $post, $mapping, $key, $featured_image_url );
         } elseif ( 'wordpress' === $type ) {
-            // WP-to-WP forwarding reuses the full forward flow with a direct call.
-            $xproducts_backup = get_post_meta( $post_id, 'product', false );
-            update_post_meta( $post_id, 'product', $key );
-            $results[ $key ] = array( 'success' => true, 'message' => 'Queued for WP forwarding' );
-            // Restore original.
-            delete_post_meta( $post_id, 'product' );
-            foreach ( $xproducts_backup as $v ) {
-                add_post_meta( $post_id, 'product', $v );
+            // Previously this only reported "Queued" and never sent anything.
+            if ( null === $wp_prepared ) {
+                $wp_prepared = post_forwarder_prepare_wp_payload( $post );
+                if ( ! $wp_prepared['featured_image_url'] && $featured_image_url ) {
+                    $wp_prepared['featured_image_url'] = $featured_image_url;
+                }
             }
+            $results[ $key ] = post_forwarder_forward_to_wordpress( $post, $mapping, $key, $wp_prepared );
         }
     }
     return $results;
