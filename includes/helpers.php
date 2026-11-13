@@ -47,6 +47,23 @@ function post_forwarder_relay_url() {
     return 'https://post-forwarder-relay.sylwesterulatowski.workers.dev';
 }
 
+/**
+ * LinkedIn Marketing API version sent in the LinkedIn-Version header (YYYYMM).
+ *
+ * LinkedIn supports each version for roughly one year, then rejects it with
+ * HTTP 426. Override with the POST_FORWARDER_LINKEDIN_VERSION constant or the
+ * 'post_forwarder_linkedin_api_version' filter if LinkedIn retires this one
+ * before a plugin update ships.
+ *
+ * @return string
+ */
+function post_forwarder_linkedin_api_version() {
+    $version = ( defined( 'POST_FORWARDER_LINKEDIN_VERSION' ) && POST_FORWARDER_LINKEDIN_VERSION )
+        ? (string) POST_FORWARDER_LINKEDIN_VERSION
+        : '202610';
+    return (string) apply_filters( 'post_forwarder_linkedin_api_version', $version );
+}
+
 function post_forwarder_channel_connected( array $m ) {
     $type = isset( $m['type'] ) ? $m['type'] : 'wordpress';
     switch ( $type ) {
