@@ -96,6 +96,24 @@ function post_forwarder_meta_enabled() {
 }
 
 /**
+ * Relay URL that starts the Facebook/Instagram sign-in for one portal.
+ *
+ * @param string $portal_key Portal key.
+ * @return string Empty when no relay is configured.
+ */
+function post_forwarder_meta_oauth_url( $portal_key ) {
+    $relay = post_forwarder_relay_url();
+    if ( ! $relay ) {
+        return '';
+    }
+    return $relay . '/meta/start?' . http_build_query( array(
+        'return_url' => admin_url( 'admin.php?page=post-forwarder-settings' ),
+        'portal_key' => $portal_key,
+        'wp_nonce'   => wp_create_nonce( 'meta_oauth_' . $portal_key ),
+    ) );
+}
+
+/**
  * Whether an X portal can renew its short-lived access token on its own
  * (it has a refresh token that has not expired yet).
  *
