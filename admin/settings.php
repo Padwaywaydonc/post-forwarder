@@ -771,8 +771,8 @@ function post_forwarder_settings_page() {
                             </div>
                             <?php endif; ?>
 
-                            <div class="portal-detail" style="padding:15px;<?php echo $is_portal_connected ? 'display:none;' : ''; ?>">
-                            <?php if ( ! $is_portal_connected ) : ?>
+                            <div class="portal-detail" style="padding:15px;<?php echo $show_summary ? 'display:none;' : ''; ?>">
+                            <?php if ( ! $show_summary ) : ?>
                             <h4 style="margin-top:0;">
                                 <?php echo esc_html( sprintf( __( 'Account #%d', 'post-forwarder' ), $i + 1 ) ); ?>
                             </h4>
