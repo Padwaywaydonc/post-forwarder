@@ -176,6 +176,12 @@ The plugin logs the error and shows it in the post editor sidebar after saving. 
 
 == Changelog ==
 
+= 3.1.0 =
+* New: works with AI assistants — abilities to list channels, forward a post and schedule a post (WordPress Abilities API, 6.9+)
+* Fix: posts scheduled on the calendar for other WordPress sites are now actually forwarded (previously they were marked as sent without being sent)
+* X: featured images upload through X's current v2 media API (reconnect X once to allow it)
+* Calendar: invalid dates and unknown posts are now rejected instead of being saved
+
 = 3.0.4 =
 * Fix: accounts with an expired token now stay in the compact list with a red "Token expired" label and their own Reconnect button (previously only other accounts showed a Reconnect button)
 * Fix: X accounts whose short-lived access token renews automatically are no longer shown as "Not connected"
