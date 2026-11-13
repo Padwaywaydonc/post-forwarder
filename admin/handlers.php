@@ -551,6 +551,9 @@ function post_forwarder_ajax_add_channel() {
     }
 
     $allowed_types = array( 'linkedin', 'x', 'wordpress' );
+    if ( post_forwarder_meta_enabled() ) {
+        $allowed_types[] = 'meta';
+    }
     if ( ! in_array( $type, $allowed_types, true ) ) {
         $type = 'wordpress';
     }
