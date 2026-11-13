@@ -2,7 +2,7 @@
 Contributors: sylwester1213
 Tags: forward, syndication, linkedin, twitter, schedule
 Requires at least: 5.6
-Tested up to: 7.0
+Tested up to: 7.1
 Requires PHP: 7.4
 Stable tag: 3.0.3
 License: GPLv2 or later
@@ -41,7 +41,7 @@ Post Forwarder includes a built-in weekly calendar so you can do more than fire-
 
 **Compatibility**
 
-Tested with WordPress 7.0 and PHP 8.3.
+Tested with WordPress 7.1 and PHP 8.3.
 
 == Platform Requirements & Limitations ==
 
@@ -171,6 +171,7 @@ The plugin logs the error and shows it in the post editor sidebar after saving. 
 * Fix: LinkedIn posting works again — updated to LinkedIn API version 202610 (LinkedIn retired the previous version in March 2026)
 * LinkedIn: clear message when LinkedIn retires an API version, plus a wp-config override
 * X: updated setup notes for X's pay-per-use pricing
+* Tested with WordPress 7.1
 
 = 3.0.2 =
 * Restored the plugin icon and banner on the WordPress.org listing
@@ -233,7 +234,7 @@ Major update. LinkedIn posts now include featured image thumbnails and auto-hash
 * All form inputs are sanitized and validated; WordPress nonces protect all forms and OAuth callbacks.
 
 **Tested with:**
-* WordPress 7.0
+* WordPress 7.1
 * PHP 8.3
 
 **Minimum Requirements:**
