@@ -287,6 +287,12 @@ function post_forwarder_settings_page() {
             . '</p></div>';
     }
 
+    if ( isset( $_GET['x_connect_error'] ) && 'missing_app' === $_GET['x_connect_error'] ) {
+        $wp_auth_notice = '<div class="notice notice-warning is-dismissible"><p>'
+            . esc_html__( 'To connect X, enter the Client ID and Client Secret of your own X developer app in the X account below, click "Save Portals", then "Connect with X". X bills your developer account for each post.', 'post-forwarder' )
+            . '</p></div>';
+    }
+
     if ( isset( $_GET['wp_connect_error'] ) && 'preflight_failed' === $_GET['wp_connect_error'] ) {
         $wp_auth_notice = '<div class="notice notice-error is-dismissible"><p>'
             . esc_html__( 'WordPress connection failed: could not reach the REST API on the target site. Make sure the URL is correct and the site runs WordPress 5.6+.', 'post-forwarder' )
@@ -485,6 +491,14 @@ function post_forwarder_settings_page() {
         <?php echo wp_kses_post($linkedin_oauth_notice); ?>
         <?php echo wp_kses_post($x_oauth_notice); ?>
         <?php echo wp_kses_post( $wp_auth_notice ); ?>
+        <?php if ( isset( $_GET['wordpress_auth_callback'] ) || isset( $_GET['wordpress_auth_rejected'] ) ) : ?>
+        <script>
+        // The target site returns the new application password in the URL; drop it from the address bar and history.
+        if ( window.history && window.history.replaceState ) {
+            window.history.replaceState( null, '', <?php echo wp_json_encode( admin_url( 'admin.php?page=post-forwarder-settings' ) ); ?> );
+        }
+        </script>
+        <?php endif; ?>
         <form method="post" action="options.php">
             <?php settings_fields('post_forwarding'); ?>
             <table class="form-table">
@@ -647,7 +661,11 @@ function post_forwarder_settings_page() {
                         $is_x           = ( 'x' === $mapping_type );
                         $is_x_connected = $is_x && post_forwarder_x_is_connected( $mapping );
                         $x_can_refresh  = $is_x && post_forwarder_x_can_refresh( $mapping );
-                        if ( $is_x && $relay_url_val ) {
+                        // New X connections need the site's own developer app (X bills it per post). Accounts that
+                        // were connected earlier without one keep working and can still reconnect.
+                        $x_needs_app    = $is_x && ( empty( $mapping['client_id'] ) || empty( $mapping['client_secret'] ) )
+                            && empty( $mapping['refresh_token'] ) && empty( $mapping['access_token'] );
+                        if ( $is_x && $relay_url_val && ! $x_needs_app ) {
                             $x_oauth_args = array(
                                 'return_url' => admin_url( 'admin.php?page=post-forwarder-settings' ),
                                 'portal_key' => $key,
@@ -926,6 +944,8 @@ function post_forwarder_settings_page() {
                                         <?php elseif ( $x_oauth_url ) : ?>
                                             <span style="color:#666;"><?php esc_html_e( 'Not connected', 'post-forwarder' ); ?></span>
                                             <a href="<?php echo esc_url( $x_oauth_url ); ?>" class="button" style="margin-left:10px;background:#000;border-color:#000;color:#fff;">&#10132; <?php esc_html_e( 'Connect with X', 'post-forwarder' ); ?></a>
+                                        <?php elseif ( $x_needs_app ) : ?>
+                                            <span style="color:#666;"><?php esc_html_e( 'Not connected. Enter your X app Client ID and Client Secret above and click "Save Portals"; the "Connect with X" button then appears.', 'post-forwarder' ); ?></span>
                                         <?php else : ?>
                                             <span style="color:#666;"><?php esc_html_e( 'X connection requires the relay. Configure POST_FORWARDER_RELAY_URL first.', 'post-forwarder' ); ?></span>
                                         <?php endif; ?>
@@ -1075,6 +1095,10 @@ function post_forwarder_settings_page() {
             var key  = pfGetPortalKey($row);
             var name = $.trim($row.find('input[name$="[name]"]').val());
             if (!name) { alert('<?php echo esc_js( __( 'Please enter an Account Name first.', 'post-forwarder' ) ); ?>'); return; }
+            if (!$.trim($row.find('input[name$="[client_id]"]').filter(':visible').val() || '')) {
+                alert('<?php echo esc_js( __( 'Enter the Client ID and Client Secret of your own X developer app first. X bills your developer account for each post.', 'post-forwarder' ) ); ?>');
+                return;
+            }
             $('input[name="pending_x_connect"]').val(key || name);
             $row.closest('form').find('input[name="submit_portals"]').click();
         });
