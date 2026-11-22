@@ -56,6 +56,32 @@ function post_forwarder_register_settings() {
 
 // Handle the portals form submission early (admin_init) so wp_redirect() works
 // before any output is sent — standard WordPress PRG pattern.
+/**
+ * Resolve the portal key sent by a "Save & Connect" button.
+ *
+ * Saved rows send their key, but a row that is being added for the first time
+ * only knows its name ("My Company"). Its key is generated on save with
+ * sanitize_title() ("my-company"), which sanitize_key() alone would never match
+ * ("mycompany"), so the redirect to LinkedIn/X/WordPress was silently skipped.
+ *
+ * @param string $raw              Value posted by the button (key or name).
+ * @param array  $portals          Saved portals, keyed by portal key.
+ * @param array  $new_keys_by_name Keys generated on this save, keyed by name.
+ * @return string Portal key ('' when nothing matches).
+ */
+function post_forwarder_resolve_pending_key( $raw, array $portals, array $new_keys_by_name ) {
+    $raw = sanitize_text_field( (string) $raw );
+    if ( isset( $new_keys_by_name[ $raw ] ) ) {
+        return $new_keys_by_name[ $raw ];
+    }
+    foreach ( array( sanitize_key( $raw ), sanitize_title( $raw ) ) as $candidate ) {
+        if ( '' !== $candidate && isset( $portals[ $candidate ] ) ) {
+            return $candidate;
+        }
+    }
+    return '';
+}
+
 function post_forwarder_handle_portals_save() {
     if ( ! isset( $_POST['submit_portals'], $_POST['portals_nonce'] ) ) {
         return;
@@ -75,7 +101,8 @@ function post_forwarder_handle_portals_save() {
         }
     }
 
-    $portals = array();
+    $portals          = array();
+    $new_keys_by_name = array();
     $existing_mappings_for_save = isset( $options['mappings'] ) ? $options['mappings'] : array();
     if ( ! is_array( $existing_mappings_for_save ) ) {
         $existing_mappings_for_save = json_decode( is_string( $existing_mappings_for_save ) ? $existing_mappings_for_save : '{}', true );
@@ -102,6 +129,8 @@ function post_forwarder_handle_portals_save() {
                 while ( isset( $portals[ $key ] ) ) {
                     $key = $base . '-' . $n++;
                 }
+                // New rows send their name (not a key) with "Save & Connect"; remember the key we gave them.
+                $new_keys_by_name[ sanitize_text_field( $portal['name'] ) ] = $key;
             }
             $allowed_types = array( 'linkedin', 'x', 'wordpress' );
             $type          = ( isset( $portal['type'] ) && in_array( $portal['type'], $allowed_types, true ) ) ? $portal['type'] : 'wordpress';
@@ -163,7 +192,7 @@ function post_forwarder_handle_portals_save() {
 
     // Save & Connect — LinkedIn.
     if ( ! empty( $_POST['pending_linkedin_connect'] ) ) {
-        $connect_key  = sanitize_key( wp_unslash( $_POST['pending_linkedin_connect'] ) );
+        $connect_key  = post_forwarder_resolve_pending_key( wp_unslash( $_POST['pending_linkedin_connect'] ), $portals, $new_keys_by_name );
         $relay_target = post_forwarder_relay_url();
         if ( $relay_target && isset( $portals[ $connect_key ] ) && 'linkedin' === $portals[ $connect_key ]['type'] ) {
             wp_redirect( $relay_target . '/start?' . http_build_query( array(
@@ -177,8 +206,14 @@ function post_forwarder_handle_portals_save() {
 
     // Save & Connect — X.
     if ( ! empty( $_POST['pending_x_connect'] ) ) {
-        $x_connect_key  = sanitize_key( wp_unslash( $_POST['pending_x_connect'] ) );
+        $x_connect_key  = post_forwarder_resolve_pending_key( wp_unslash( $_POST['pending_x_connect'] ), $portals, $new_keys_by_name );
         $x_relay_target = post_forwarder_relay_url();
+        // Each site connects its own X developer app (X bills that account per post); never fall back to the relay's app.
+        if ( isset( $portals[ $x_connect_key ] ) && 'x' === $portals[ $x_connect_key ]['type']
+            && ( empty( $portals[ $x_connect_key ]['client_id'] ) || empty( $portals[ $x_connect_key ]['client_secret'] ) ) ) {
+            wp_redirect( $settings_url . '&x_connect_error=missing_app' );
+            exit;
+        }
         if ( $x_relay_target && isset( $portals[ $x_connect_key ] ) && 'x' === $portals[ $x_connect_key ]['type'] ) {
             $x_redirect_args = array(
                 'return_url' => $settings_url,
@@ -198,28 +233,16 @@ function post_forwarder_handle_portals_save() {
 
     // Save & Connect — WordPress Application Password authorization.
     if ( ! empty( $_POST['pending_wp_connect'] ) ) {
-        $wp_connect_key = sanitize_key( wp_unslash( $_POST['pending_wp_connect'] ) );
+        $wp_connect_key = post_forwarder_resolve_pending_key( wp_unslash( $_POST['pending_wp_connect'] ), $portals, $new_keys_by_name );
         if ( isset( $portals[ $wp_connect_key ] ) && 'wordpress' === $portals[ $wp_connect_key ]['type'] ) {
             $target_url = isset( $portals[ $wp_connect_key ]['url'] ) ? $portals[ $wp_connect_key ]['url'] : '';
             if ( $target_url ) {
-                $preflight    = wp_remote_get(
-                    rtrim( $target_url, '/' ) . '/wp-json/',
-                    array( 'timeout' => 10, 'redirection' => 5 )
-                );
-                $pf_data      = ! is_wp_error( $preflight ) ? json_decode( wp_remote_retrieve_body( $preflight ), true ) : null;
-                $preflight_ok = ! is_wp_error( $preflight )
-                    && 200 === wp_remote_retrieve_response_code( $preflight )
-                    && is_array( $pf_data )
-                    && isset( $pf_data['namespaces'] );
-
-                if ( ! $preflight_ok ) {
+                // Where wp-admin actually lives; differs from the entered URL when WordPress is installed in a subdirectory.
+                $wp_site_url = post_forwarder_wp_preflight( $target_url );
+                if ( ! $wp_site_url ) {
                     wp_redirect( $settings_url . '&wp_connect_error=preflight_failed&portal_key=' . urlencode( $wp_connect_key ) );
                     exit;
                 }
-
-                // Use the site URL from the API response — this is where wp-admin actually lives
-                // and may differ from the entered URL when WordPress is installed in a subdirectory.
-                $wp_site_url = ! empty( $pf_data['url'] ) ? rtrim( $pf_data['url'], '/' ) : rtrim( $target_url, '/' );
 
                 $nonce       = wp_create_nonce( 'wp_auth_' . $wp_connect_key );
                 $success_url = add_query_arg( array(
@@ -423,20 +446,16 @@ function post_forwarder_enqueue_scripts( $hook ) {
     var restBase = ' . wp_json_encode( rest_url( 'post-forwarder/v1/results/' ) ) . ';
     var nonce    = ' . wp_json_encode( $rest_nonce ) . ';
     var wasSaving = false;
-    wp.data.subscribe(function() {
-        var editor = wp.data.select("core/editor");
-        if (!editor) { return; }
-        var nowSaving = editor.isSavingPost();
-        if (!nowSaving && wasSaving) {
-            wasSaving = false;
-            var post   = editor.getCurrentPost();
-            var postId = post && post.id ? post.id : 0;
-            if (!postId) { return; }
-            setTimeout(function() {
-                fetch(restBase + postId, { headers: { "X-WP-Nonce": nonce } })
-                    .then(function(r){ return r.json(); })
-                    .then(function(data) {
-                        if (!data || !data.results || !data.results.length) { return; }
+    // Forwarding runs when the meta boxes are saved, which happens after the post itself is saved,
+    // so wait for both and then poll a few times (remote sites can take a while to answer).
+    function pfFetchResults(postId, triesLeft) {
+        fetch(restBase + postId, { headers: { "X-WP-Nonce": nonce } })
+            .then(function(r){ return r.json(); })
+            .then(function(data) {
+                if (!data || !data.results || !data.results.length) {
+                    if (triesLeft > 0) { setTimeout(function(){ pfFetchResults(postId, triesLeft - 1); }, 1500); }
+                    return;
+                }
                         var notices = wp.data.dispatch("core/notices");
                         if (!notices) { return; }
                         data.results.forEach(function(r, i) {
@@ -449,7 +468,19 @@ function post_forwarder_enqueue_scripts( $hook ) {
                             );
                         });
                     }).catch(function(){});
-            }, 800);
+    }
+    wp.data.subscribe(function() {
+        var editor = wp.data.select("core/editor");
+        if (!editor) { return; }
+        var editPost  = wp.data.select("core/edit-post");
+        var nowSaving = editor.isSavingPost() || !!(editPost && editPost.isSavingMetaBoxes && editPost.isSavingMetaBoxes());
+        if (!nowSaving && wasSaving) {
+            wasSaving = false;
+            var post   = editor.getCurrentPost();
+            var postId = post && post.id ? post.id : 0;
+            if (!postId) { return; }
+            if (!document.querySelector("#post_forwarding_meta_box input[name=\\"post_forwarding_product[]\\"]:checked")) { return; }
+            setTimeout(function() { pfFetchResults(postId, 6); }, 500);
         } else if (nowSaving) {
             wasSaving = true;
         }
@@ -531,6 +562,14 @@ function post_forwarder_ajax_add_channel() {
     if ( 'wordpress' === $type && ! $url ) {
         wp_send_json_error( array( 'message' => __( 'Site URL is required for WordPress portals.', 'post-forwarder' ) ) );
     }
+    // Check the site before saving anything, so a typo doesn't leave a half-made channel behind.
+    $admin_base = '';
+    if ( 'wordpress' === $type && ! $user ) {
+        $admin_base = post_forwarder_wp_preflight( $url );
+        if ( ! $admin_base ) {
+            wp_send_json_error( array( 'message' => __( 'WordPress connection failed: could not reach the REST API on the target site. Make sure the URL is correct and the site runs WordPress 5.6+.', 'post-forwarder' ) ) );
+        }
+    }
 
     $options = get_option( 'post_forwarding_options', array() );
     if ( is_string( $options ) ) { $options = json_decode( $options, true ) ?: array(); }
@@ -568,22 +607,11 @@ function post_forwarder_ajax_add_channel() {
             'wp_nonce'   => wp_create_nonce( 'linkedin_oauth_' . $key ),
             'wp_site'    => admin_url(),
         ) );
-    } elseif ( 'x' === $type && $relay ) {
-        $x_ajax_args = array(
-            'return_url' => $settings_url,
-            'portal_key' => $key,
-            'wp_nonce'   => wp_create_nonce( 'x_oauth_' . $key ),
-            'wp_site'    => admin_url(),
-        );
-        if ( ! empty( $mappings[ $key ]['client_id'] ) ) {
-            $x_ajax_args['client_id'] = $mappings[ $key ]['client_id'];
-        }
-        if ( ! empty( $mappings[ $key ]['client_secret'] ) ) {
-            $x_ajax_args['client_secret'] = $mappings[ $key ]['client_secret'];
-        }
-        $oauth_url = $relay . '/x/start?' . http_build_query( $x_ajax_args );
+    } elseif ( 'x' === $type ) {
+        // X needs the site's own developer app credentials, which are entered on the Settings page.
+        $oauth_url = add_query_arg( 'x_connect_error', 'missing_app', $settings_url );
     } elseif ( 'wordpress' === $type && $url && ! $user ) {
-        // App Password flow: redirect to target site's authorize page.
+        // App Password flow: redirect to target site's authorize page (in its wp-admin, which may be in a subdirectory).
         $nonce       = wp_create_nonce( 'wp_auth_' . $key );
         $success_url = add_query_arg( array(
             'wordpress_auth_callback' => '1',
@@ -594,7 +622,7 @@ function post_forwarder_ajax_add_channel() {
             'wordpress_auth_rejected' => '1',
             'portal_key'              => $key,
         ), $settings_url );
-        $oauth_url = rtrim( $url, '/' ) . '/wp-admin/authorize-application.php?' . http_build_query( array(
+        $oauth_url = $admin_base . '/wp-admin/authorize-application.php?' . http_build_query( array(
             'app_name'    => 'Post Forwarder',
             'success_url' => $success_url,
             'reject_url'  => $reject_url,

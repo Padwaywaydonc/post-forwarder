@@ -4,7 +4,7 @@ Tags: forward, syndication, linkedin, twitter, schedule
 Requires at least: 5.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 3.1.0
+Stable tag: 3.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -176,6 +176,15 @@ The plugin logs the error and shows it in the post editor sidebar after saving. 
 
 == Changelog ==
 
+= 3.1.1 =
+* Fix: "Save & Connect" did nothing for a new account whose name has a space or capital letters (e.g. "My Company"); it now goes straight to LinkedIn, X or the WordPress authorization page
+* Fix: forwarding to WordPress sites installed in a subdirectory (Bedrock, "WordPress in its own directory") failed with a 404
+* Fix: editing a post that was already forwarded now updates the copy on the destination site instead of creating a duplicate
+* Fix: forwarding results now appear in the block editor after publishing
+* Fix: the calendar's "Add Channel" checks the WordPress site first and opens the right authorization page on subdirectory installs
+* X: connecting now requires your own X developer app credentials, as documented
+* Security: the new Application Password is removed from the browser address bar and history after connecting a WordPress site
+
 = 3.1.0 =
 * New: works with AI assistants — abilities to list channels, forward a post and schedule a post (WordPress Abilities API, 6.9+)
 * Fix: posts scheduled on the calendar for other WordPress sites are now actually forwarded (previously they were marked as sent without being sent)
@@ -232,6 +241,9 @@ The plugin logs the error and shows it in the post editor sidebar after saving. 
 * Initial release — basic post forwarding
 
 == Upgrade Notice ==
+
+= 3.1.1 =
+Fixes one-click connect for new accounts, forwarding to WordPress sites in a subdirectory, and duplicate copies when editing forwarded posts.
 
 = 3.1.0 =
 Fixes calendar-scheduled forwards to WordPress sites, adds AI-assistant abilities, and moves X image upload to X's v2 API. Reconnect X once to allow image uploads.

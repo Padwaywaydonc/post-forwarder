@@ -92,6 +92,42 @@ function post_forwarder_x_is_connected( array $m ) {
     return $access_valid || post_forwarder_x_can_refresh( $m );
 }
 
+/**
+ * Base URL of a WordPress destination's REST API (without /wp-json).
+ *
+ * The REST API is served from the site's home URL, i.e. the URL the user
+ * entered and the connect preflight checked. The stored wp_site_url is the core
+ * install path (e.g. https://example.com/wp on Bedrock or "WordPress in its own
+ * directory" sites), where /wp-json returns 404, so it is only a fallback.
+ *
+ * @param array $target WordPress portal mapping.
+ * @return string
+ */
+function post_forwarder_wp_api_base( array $target ) {
+    $base = ! empty( $target['url'] ) ? $target['url'] : ( isset( $target['wp_site_url'] ) ? $target['wp_site_url'] : '' );
+    return rtrim( (string) $base, '/' );
+}
+
+/**
+ * Check that a WordPress destination answers on its REST API and return the URL
+ * where its wp-admin lives (the "url" field of /wp-json/, i.e. the core install
+ * path, which is e.g. https://example.com/wp on Bedrock sites).
+ *
+ * @param string $target_url URL the user entered.
+ * @return string|false Admin base URL without trailing slash, or false if unreachable.
+ */
+function post_forwarder_wp_preflight( $target_url ) {
+    $response = wp_remote_get( rtrim( $target_url, '/' ) . '/wp-json/', array( 'timeout' => 10, 'redirection' => 5 ) );
+    if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
+        return false;
+    }
+    $data = json_decode( wp_remote_retrieve_body( $response ), true );
+    if ( ! is_array( $data ) || ! isset( $data['namespaces'] ) ) {
+        return false;
+    }
+    return ! empty( $data['url'] ) ? rtrim( $data['url'], '/' ) : rtrim( $target_url, '/' );
+}
+
 function post_forwarder_channel_connected( array $m ) {
     $type = isset( $m['type'] ) ? $m['type'] : 'wordpress';
     switch ( $type ) {

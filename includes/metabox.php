@@ -59,8 +59,11 @@ function post_forwarder_meta_box_callback($post) {
     }
 
     // Show forwarding results from the last save (set by post_forwarder_forward_post via save_post).
-    $pf_results_key = 'pf_forward_results_' . get_current_user_id() . '_' . $post->ID;
-    $pf_results     = get_transient( $pf_results_key );
+    // In the block editor the save-listener script shows them as snackbars instead; reading them
+    // here would delete them before it can (this box is re-rendered after the meta box save).
+    $pf_block_editor = function_exists( 'use_block_editor_for_post' ) && use_block_editor_for_post( $post );
+    $pf_results_key  = 'pf_forward_results_' . get_current_user_id() . '_' . $post->ID;
+    $pf_results      = $pf_block_editor ? false : get_transient( $pf_results_key );
     if ( $pf_results && is_array( $pf_results ) ) {
         delete_transient( $pf_results_key );
         $all_ok = true;

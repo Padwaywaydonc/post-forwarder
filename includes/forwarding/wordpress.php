@@ -133,7 +133,7 @@ function post_forwarder_forward_post($post_id) {
 
     // Set the "recently forwarded" flag ONLY after processing ALL portals
     if ($forwarding_successful) {
-        set_transient($recent_forward_key, true, 300); // 5 minutes
+        set_transient($recent_forward_key, true, 30); // Covers the editor's double save; later edits update the remote copy.
     }
 
     // Store per-portal results for display on the post edit screen after redirect.
@@ -274,9 +274,7 @@ function post_forwarder_forward_to_wordpress( $post, $target, $portal_key, $prep
     $meta_flattened     = $prepared['meta_flattened'];
     $featured_image_url = $prepared['featured_image_url'];
 
-    $wp_api_base = ! empty( $target['wp_site_url'] )
-        ? rtrim( $target['wp_site_url'], '/' )
-        : rtrim( $target['url'], '/' );
+    $wp_api_base = post_forwarder_wp_api_base( $target );
 
     if ($original_post_type === 'post') {
         $api_url = $wp_api_base . '/wp-json/wp/v2/posts';
@@ -307,7 +305,7 @@ function post_forwarder_forward_to_wordpress( $post, $target, $portal_key, $prep
 // Helper function to upload and set featured image
 function post_forwarder_set_featured_image($remote_post_id, $image_url, $target, $post_type = 'post') {
     // First, upload the image to the remote site
-    $media_api_url = rtrim($target['url'], '/') . '/wp-json/wp/v2/media';
+    $media_api_url = post_forwarder_wp_api_base( $target ) . '/wp-json/wp/v2/media';
     $auth = base64_encode($target['user'] . ':' . $target['password']);
 
     // Download the image content
@@ -355,9 +353,9 @@ function post_forwarder_set_featured_image($remote_post_id, $image_url, $target,
 
             // Now set it as featured image - construct the correct URL
             if ($post_type === 'post') {
-                $post_update_url = rtrim($target['url'], '/') . '/wp-json/wp/v2/posts/' . $remote_post_id;
+                $post_update_url = post_forwarder_wp_api_base( $target ) . '/wp-json/wp/v2/posts/' . $remote_post_id;
             } else {
-                $post_update_url = rtrim($target['url'], '/') . '/wp-json/wp/v2/' . $post_type . '/' . $remote_post_id;
+                $post_update_url = post_forwarder_wp_api_base( $target ) . '/wp-json/wp/v2/' . $post_type . '/' . $remote_post_id;
             }
 
             $update_response = wp_remote_request($post_update_url, array(
@@ -429,7 +427,7 @@ function post_forwarder_attempt_with_term_slugs($post, $api_url, $auth, $taxonom
 
     // Resolve term slugs to integer IDs on the target site (WP REST API requires integers).
     $sslverify  = apply_filters( 'post_forwarder_sslverify', true );
-    $wp_api_base = ! empty( $target['wp_site_url'] ) ? rtrim( $target['wp_site_url'], '/' ) : rtrim( $target['url'], '/' );
+    $wp_api_base = post_forwarder_wp_api_base( $target );
 
     foreach ($taxonomy_data as $taxonomy_name => $taxonomy_info) {
         if (!isset($taxonomy_info['terms']) || empty($taxonomy_info['terms'])) {
@@ -477,6 +475,12 @@ function post_forwarder_attempt_with_term_slugs($post, $api_url, $auth, $taxonom
         'sslverify' => apply_filters( 'post_forwarder_sslverify', true ),
     );
 
+    // Already forwarded to this destination? Update that copy instead of creating a duplicate.
+    $updated = post_forwarder_wp_try_update( $post, $body, $request_args, $target, $product_key, $featured_image_url, $original_post_type );
+    if ( null !== $updated ) {
+        return $updated;
+    }
+
     $response = wp_remote_post( $api_url, $request_args );
 
     if ( is_wp_error( $response ) ) {
@@ -489,7 +493,7 @@ function post_forwarder_attempt_with_term_slugs($post, $api_url, $auth, $taxonom
 
     // If custom post type endpoint returns 404, try with the posts endpoint.
     if ( $response_code === 404 && $original_post_type !== 'post' ) {
-        $wp_api_base    = ! empty( $target['wp_site_url'] ) ? rtrim( $target['wp_site_url'], '/' ) : rtrim( $target['url'], '/' );
+        $wp_api_base    = post_forwarder_wp_api_base( $target );
         $fallback_url   = $wp_api_base . '/wp-json/wp/v2/posts';
         $body_with_type = $body;
         $body_with_type['type'] = $original_post_type;
@@ -508,11 +512,12 @@ function post_forwarder_attempt_with_term_slugs($post, $api_url, $auth, $taxonom
 
     if ( $response_code >= 200 && $response_code < 300 ) {
         post_forwarder_log_error( 'WordPress forward succeeded (HTTP ' . $response_code . '): ' . $api_url );
-        if ( $featured_image_url ) {
-            $created_post = json_decode( $response_body, true );
-            if ( isset( $created_post['id'] ) ) {
+        $created_post = json_decode( $response_body, true );
+        if ( isset( $created_post['id'] ) ) {
+            if ( $featured_image_url ) {
                 post_forwarder_set_featured_image( $created_post['id'], $featured_image_url, $target, $original_post_type );
             }
+            post_forwarder_wp_remember_copy( $post->ID, $product_key, $api_url, (int) $created_post['id'], (string) $featured_image_url );
         }
         return true;
     }
@@ -549,6 +554,11 @@ function post_forwarder_attempt_with_fallback_tags($post, $api_url, $auth, $fall
         'sslverify' => apply_filters( 'post_forwarder_sslverify', true ),
     );
 
+    $updated = post_forwarder_wp_try_update( $post, $body, $request_args, $target, $product_key, $featured_image_url, $original_post_type );
+    if ( null !== $updated ) {
+        return $updated;
+    }
+
     $response = wp_remote_post( $api_url, $request_args );
 
     if ( is_wp_error( $response ) ) {
@@ -560,7 +570,7 @@ function post_forwarder_attempt_with_fallback_tags($post, $api_url, $auth, $fall
     $response_body = wp_remote_retrieve_body( $response );
 
     if ( $response_code === 404 && $original_post_type !== 'post' ) {
-        $wp_api_base    = ! empty( $target['wp_site_url'] ) ? rtrim( $target['wp_site_url'], '/' ) : rtrim( $target['url'], '/' );
+        $wp_api_base    = post_forwarder_wp_api_base( $target );
         $fallback_url   = $wp_api_base . '/wp-json/wp/v2/posts';
         $body_with_type = $body;
         $body_with_type['type'] = $original_post_type;
@@ -579,15 +589,75 @@ function post_forwarder_attempt_with_fallback_tags($post, $api_url, $auth, $fall
 
     if ( $response_code >= 200 && $response_code < 300 ) {
         post_forwarder_log_error( 'WordPress forward (fallback tags) succeeded (HTTP ' . $response_code . '): ' . $api_url );
-        if ( $featured_image_url ) {
-            $created_post = json_decode( $response_body, true );
-            if ( isset( $created_post['id'] ) ) {
+        $created_post = json_decode( $response_body, true );
+        if ( isset( $created_post['id'] ) ) {
+            if ( $featured_image_url ) {
                 post_forwarder_set_featured_image( $created_post['id'], $featured_image_url, $target, $original_post_type );
             }
+            post_forwarder_wp_remember_copy( $post->ID, $product_key, $api_url, (int) $created_post['id'], (string) $featured_image_url );
         }
         return true;
     }
 
     post_forwarder_log_error( 'WordPress forward (fallback tags) failed (HTTP ' . $response_code . '): ' . substr( $response_body, 0, 300 ) . ' — URL: ' . $api_url );
+    return false;
+}
+
+/**
+ * Where a post was already forwarded, per WordPress destination: portal key =>
+ * { id: remote post ID, endpoint: REST collection URL, image: featured image URL sent }.
+ */
+function post_forwarder_wp_remember_copy( $post_id, $portal_key, $endpoint, $remote_id, $image_url ) {
+    $copies = get_post_meta( $post_id, '_post_forwarder_wp_copies', true );
+    $copies = is_array( $copies ) ? $copies : array();
+    $copies[ $portal_key ] = array(
+        'id'       => (int) $remote_id,
+        'endpoint' => esc_url_raw( $endpoint ),
+        'image'    => esc_url_raw( $image_url ),
+    );
+    update_post_meta( $post_id, '_post_forwarder_wp_copies', $copies );
+}
+
+function post_forwarder_wp_forget_copy( $post_id, $portal_key ) {
+    $copies = get_post_meta( $post_id, '_post_forwarder_wp_copies', true );
+    if ( is_array( $copies ) && isset( $copies[ $portal_key ] ) ) {
+        unset( $copies[ $portal_key ] );
+        update_post_meta( $post_id, '_post_forwarder_wp_copies', $copies );
+    }
+}
+
+/**
+ * If the post was already forwarded to this destination, update that remote copy
+ * (title, content, excerpt, terms, meta; its status is left as the target has it).
+ *
+ * @return bool|null true/false for an update that succeeded/failed, or null when
+ *                   there is no remote copy (or it was deleted) and a new one should be created.
+ */
+function post_forwarder_wp_try_update( $post, array $body, array $request_args, array $target, $portal_key, $featured_image_url, $post_type ) {
+    $copies = get_post_meta( $post->ID, '_post_forwarder_wp_copies', true );
+    if ( ! is_array( $copies ) || empty( $copies[ $portal_key ]['id'] ) || empty( $copies[ $portal_key ]['endpoint'] ) ) {
+        return null;
+    }
+    $copy = $copies[ $portal_key ];
+    unset( $body['status'] );
+    $url      = rtrim( $copy['endpoint'], '/' ) . '/' . (int) $copy['id'];
+    $response = wp_remote_post( $url, array_merge( $request_args, array( 'body' => wp_json_encode( $body ) ) ) );
+    $code     = is_wp_error( $response ) ? 0 : (int) wp_remote_retrieve_response_code( $response );
+
+    if ( $code >= 200 && $code < 300 ) {
+        post_forwarder_log_error( 'WordPress copy updated (HTTP ' . $code . '): ' . $url );
+        // Only upload the featured image again when it changed, to avoid piling up media on the target.
+        if ( $featured_image_url && $featured_image_url !== ( isset( $copy['image'] ) ? $copy['image'] : '' ) ) {
+            post_forwarder_set_featured_image( (int) $copy['id'], $featured_image_url, $target, $post_type );
+        }
+        post_forwarder_wp_remember_copy( $post->ID, $portal_key, $copy['endpoint'], (int) $copy['id'], (string) $featured_image_url );
+        return true;
+    }
+    if ( 404 === $code || 410 === $code ) {
+        // The copy was deleted on the target: forget it and create a new one.
+        post_forwarder_wp_forget_copy( $post->ID, $portal_key );
+        return null;
+    }
+    post_forwarder_log_error( 'WordPress copy update failed (HTTP ' . $code . '): ' . ( is_wp_error( $response ) ? $response->get_error_message() : substr( wp_remote_retrieve_body( $response ), 0, 300 ) ) . ' — URL: ' . $url );
     return false;
 }
